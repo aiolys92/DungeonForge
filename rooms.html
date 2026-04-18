@@ -246,7 +246,7 @@
 
 <div class="toast"></div>
 
-<script src="data.js"></script>
+<script src="engine.js"></script>
 <script>
 let dungeon = null;
 let activeFilter = 'all';
@@ -293,7 +293,7 @@ function loadDungeon() {
 
 function renderSummary() {
   if (!dungeon) return;
-  const theme = THEMES[dungeon.themeKey];
+  const theme = DUNGEON_DUNGEON_THEMES[dungeon.themeKey];
   const diff = DIFF_LABELS[dungeon.difficulty];
   const html = `<div class="dungeon-summary">
     <div class="summary-title">${theme.name}</div>

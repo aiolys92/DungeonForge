@@ -3,273 +3,80 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>DungeonForge — Générateur de Donjons JDR</title>
+<title>DungeonForge v2</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700;900&family=Cinzel:wght@400;600;700&family=Crimson+Pro:ital,wght@0,300;0,400;0,600;1,300;1,400&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="shared.css">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Cinzel:wght@400;600;700&family=Crimson+Pro:ital,wght@0,300;0,400;0,600;1,400&display=swap" rel="stylesheet">
 <style>
-.hero {
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-  overflow: hidden;
-  padding: 2rem;
-}
-
-.hero-bg {
-  position: absolute; inset: 0;
-  background: radial-gradient(ellipse at 50% 60%, #1a0e05 0%, #0d0a0f 60%, #060408 100%);
-  z-index: 0;
-}
-
-.rune-grid {
-  position: absolute; inset: 0;
-  background-image: 
-    repeating-linear-gradient(0deg, transparent, transparent 59px, rgba(180,120,40,0.04) 60px),
-    repeating-linear-gradient(90deg, transparent, transparent 59px, rgba(180,120,40,0.04) 60px);
-  z-index: 1;
-}
-
-.ember-particles {
-  position: absolute; inset: 0; z-index: 2; pointer-events: none;
-  overflow: hidden;
-}
-
-.ember {
-  position: absolute;
-  bottom: -10px;
-  width: 2px; height: 2px;
-  background: #e8853a;
-  border-radius: 50%;
-  box-shadow: 0 0 4px 1px rgba(232,133,58,0.6);
-  animation: rise var(--dur, 6s) var(--delay, 0s) ease-in infinite;
-  opacity: 0;
-}
-
-@keyframes rise {
-  0% { transform: translateY(0) translateX(0) scale(1); opacity: 0; }
-  10% { opacity: 1; }
-  90% { opacity: 0.5; }
-  100% { transform: translateY(-100vh) translateX(var(--drift,20px)) scale(0.3); opacity: 0; }
-}
-
-.hero-content {
-  position: relative; z-index: 10;
-  text-align: center;
-  max-width: 800px;
-}
-
-.forge-icon {
-  width: 80px; height: 80px;
-  margin: 0 auto 2rem;
-  position: relative;
-}
-
-.forge-icon svg {
-  width: 100%; height: 100%;
-  filter: drop-shadow(0 0 12px rgba(232,133,58,0.5));
-}
-
-.hero-title {
-  font-family: 'Cinzel Decorative', serif;
-  font-size: clamp(2.5rem, 7vw, 5rem);
-  font-weight: 900;
-  color: #f0c060;
-  letter-spacing: 0.05em;
-  line-height: 1.1;
-  margin: 0 0 0.5rem;
-  text-shadow: 0 0 30px rgba(240,192,96,0.3), 0 2px 4px rgba(0,0,0,0.8);
-}
-
-.hero-subtitle {
-  font-family: 'Cinzel', serif;
-  font-size: clamp(0.85rem, 2vw, 1.1rem);
-  color: #a07840;
-  letter-spacing: 0.3em;
-  text-transform: uppercase;
-  margin: 0 0 1rem;
-}
-
-.hero-desc {
-  font-family: 'Crimson Pro', serif;
-  font-size: 1.2rem;
-  color: #9a8878;
-  line-height: 1.7;
-  margin: 0 0 3rem;
-  max-width: 520px;
-  margin-left: auto; margin-right: auto;
-}
-
-.divider-rune {
-  display: flex; align-items: center; gap: 1rem;
-  margin: 1.5rem 0 2.5rem;
-}
-
-.divider-rune::before, .divider-rune::after {
-  content: '';
-  flex: 1;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, #4a3010, transparent);
-}
-
-.divider-rune span {
-  color: #6a4820;
-  font-size: 1.2rem;
-}
-
-.nav-cards {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 1.5rem;
-  width: 100%;
-  max-width: 900px;
-}
-
-.nav-card {
-  background: linear-gradient(135deg, rgba(30,18,8,0.95), rgba(20,12,6,0.98));
-  border: 1px solid rgba(180,120,40,0.2);
-  border-radius: 8px;
-  padding: 2rem 1.5rem;
-  text-decoration: none;
-  display: flex; flex-direction: column; align-items: center; gap: 1rem;
-  position: relative; overflow: hidden;
-  transition: all 0.3s ease;
-  cursor: pointer;
-}
-
-.nav-card::before {
-  content: '';
-  position: absolute; inset: 0;
-  background: linear-gradient(135deg, rgba(240,192,96,0.03), transparent);
-  opacity: 0;
-  transition: opacity 0.3s;
-}
-
-.nav-card:hover {
-  border-color: rgba(240,192,96,0.4);
-  transform: translateY(-4px);
-  box-shadow: 0 8px 32px rgba(232,133,58,0.15);
-}
-
-.nav-card:hover::before { opacity: 1; }
-
-.card-icon {
-  font-size: 2.5rem;
-  filter: drop-shadow(0 0 8px rgba(232,133,58,0.4));
-}
-
-.card-title {
-  font-family: 'Cinzel', serif;
-  font-size: 1rem;
-  font-weight: 700;
-  color: #d4a040;
-  letter-spacing: 0.1em;
-  text-align: center;
-}
-
-.card-desc {
-  font-family: 'Crimson Pro', serif;
-  font-size: 0.95rem;
-  color: #7a6858;
-  text-align: center;
-  line-height: 1.5;
-}
-
-.card-tag {
-  font-family: 'Cinzel', serif;
-  font-size: 0.65rem;
-  letter-spacing: 0.15em;
-  color: #6a4820;
-  text-transform: uppercase;
-  border: 1px solid rgba(106,72,32,0.4);
-  padding: 3px 10px;
-  border-radius: 20px;
-}
-
-.card-tag.new {
-  color: #8aaa50;
-  border-color: rgba(138,170,80,0.4);
-}
-
-.version-badge {
-  position: fixed; bottom: 1.5rem; right: 1.5rem;
-  font-family: 'Cinzel', serif;
-  font-size: 0.65rem;
-  color: #4a3820;
-  letter-spacing: 0.1em;
-  z-index: 100;
-}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#07050c;color:#c8b898;font-family:'Crimson Pro',serif;min-height:100vh;overflow:hidden}
+.hero{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;padding:2rem}
+.hero-bg{position:absolute;inset:0;background:radial-gradient(ellipse at 50% 55%,#1a0e05 0%,#0d080f 55%,#060408 100%)}
+.grid{position:absolute;inset:0;background-image:repeating-linear-gradient(0deg,transparent,transparent 59px,rgba(180,120,40,.04) 60px),repeating-linear-gradient(90deg,transparent,transparent 59px,rgba(180,120,40,.04) 60px)}
+.embers{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.ember{position:absolute;bottom:-10px;border-radius:50%;background:#e8853a;box-shadow:0 0 4px 1px rgba(232,133,58,.5);animation:rise var(--d,6s) var(--dl,0s) ease-in infinite;opacity:0}
+@keyframes rise{0%{transform:translateY(0) translateX(0) scale(1);opacity:0}10%{opacity:1}90%{opacity:.4}100%{transform:translateY(-100vh) translateX(var(--dr,20px)) scale(.3);opacity:0}}
+.content{position:relative;z-index:10;text-align:center;max-width:860px;width:100%}
+.sub{font-family:'Cinzel',serif;font-size:clamp(.75rem,1.5vw,.95rem);letter-spacing:.35em;text-transform:uppercase;color:#a07840;margin-bottom:.5rem}
+h1{font-family:'Cinzel Decorative',serif;font-size:clamp(2.2rem,6vw,4.5rem);font-weight:900;color:#f0c060;letter-spacing:.04em;line-height:1.1;text-shadow:0 0 30px rgba(240,192,96,.25),0 2px 4px rgba(0,0,0,.8);margin-bottom:.5rem}
+.sep{display:flex;align-items:center;gap:1rem;margin:1.2rem auto 1.8rem;max-width:320px}
+.sep::before,.sep::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,transparent,#4a3010,transparent)}
+.sep span{color:#6a4820}
+.desc{font-family:'Crimson Pro',serif;font-size:1.05rem;color:#8a7868;line-height:1.7;max-width:500px;margin:0 auto 2.5rem}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:1rem;width:100%;max-width:860px}
+.card{background:linear-gradient(135deg,rgba(22,14,6,.97),rgba(14,10,4,.99));border:1px solid rgba(180,120,40,.18);border-radius:10px;padding:1.75rem 1.25rem;text-decoration:none;display:flex;flex-direction:column;align-items:center;gap:.75rem;position:relative;overflow:hidden;transition:all .3s;cursor:pointer}
+.card::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(240,192,96,.04),transparent);opacity:0;transition:opacity .3s}
+.card:hover{border-color:rgba(240,192,96,.38);transform:translateY(-4px);box-shadow:0 8px 28px rgba(232,133,58,.12)}
+.card:hover::before{opacity:1}
+.card-icon{font-size:2.2rem;filter:drop-shadow(0 0 6px rgba(232,133,58,.35))}
+.card-title{font-family:'Cinzel',serif;font-size:.88rem;font-weight:700;color:#d4a040;letter-spacing:.1em;text-align:center}
+.card-desc{font-family:'Crimson Pro',serif;font-size:.88rem;color:#6a5a50;text-align:center;line-height:1.4}
+.card-badge{font-family:'Cinzel',serif;font-size:.58rem;letter-spacing:.15em;color:#5a8a3a;border:1px solid rgba(90,138,58,.35);padding:2px 9px;border-radius:20px;text-transform:uppercase}
+.ver{position:fixed;bottom:1rem;right:1rem;font-family:'Cinzel',serif;font-size:.6rem;color:#3a2810;letter-spacing:.1em}
 </style>
 </head>
 <body>
 <div class="hero">
   <div class="hero-bg"></div>
-  <div class="rune-grid"></div>
-  <div class="ember-particles" id="embers"></div>
-
-  <div class="hero-content">
-    <div class="forge-icon">
-      <svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <polygon points="40,5 75,62 5,62" fill="none" stroke="#b07830" stroke-width="1.5" opacity="0.6"/>
-        <polygon points="40,15 68,58 12,58" fill="none" stroke="#d09840" stroke-width="1" opacity="0.4"/>
-        <circle cx="40" cy="40" r="12" fill="rgba(200,100,30,0.2)" stroke="#e8853a" stroke-width="1.5"/>
-        <path d="M40 28 L40 18 M28 40 L18 40 M52 40 L62 40 M40 52 L40 62" stroke="#d09840" stroke-width="1" opacity="0.6"/>
-        <path d="M33 33 L47 47 M47 33 L33 47" stroke="#e8a050" stroke-width="1.5" stroke-linecap="round"/>
-        <circle cx="40" cy="40" r="4" fill="#f0c060"/>
-        <circle cx="40" cy="40" r="2" fill="#fff8e8"/>
-      </svg>
-    </div>
-
-    <div class="hero-subtitle">Forge de Donjons</div>
-    <h1 class="hero-title">DungeonForge</h1>
-    <div class="divider-rune"><span>⬡</span></div>
-    <p class="hero-desc">
-      Un outil de maître de jeu pour forger des donjons, cryptes et labyrinthes — 
-      avec génération procédurale, fiches de salles et export complet.
-    </p>
-
-    <div class="nav-cards">
-      <a class="nav-card" href="generator.html">
-        <span class="card-icon">🗺️</span>
+  <div class="grid"></div>
+  <div class="embers" id="embers"></div>
+  <div class="content">
+    <div class="sub">Forge de Donjons — JDR</div>
+    <h1>DungeonForge</h1>
+    <div class="sep"><span>⬡</span></div>
+    <p class="desc">Génération procédurale de donjons avec 4 algorithmes, éditeur de salles, bestiaire D&D 5e et export complet.</p>
+    <div class="cards">
+      <a class="card" href="generator.html">
+        <div class="card-icon">🗺️</div>
         <div class="card-title">Générateur</div>
-        <div class="card-desc">Forge ton donjon aléatoire avec zoom, seed et édition de salles</div>
-        <span class="card-tag new">Nouveau</span>
+        <div class="card-desc">BSP · Drunk Walk · Cellular · Labyrinthe</div>
+        <span class="card-badge">v2 Nouveau</span>
       </a>
-      <a class="nav-card" href="rooms.html">
-        <span class="card-icon">📜</span>
+      <a class="card" href="rooms.html">
+        <div class="card-icon">📜</div>
         <div class="card-title">Fiches Salles</div>
-        <div class="card-desc">Détail narratif de chaque salle, monstres, trésors et roleplay</div>
-        <span class="card-tag">MJ</span>
+        <div class="card-desc">Détail narratif, monstres, notes MJ</div>
       </a>
-      <a class="nav-card" href="bestiary.html">
-        <span class="card-icon">☠️</span>
+      <a class="card" href="bestiary.html">
+        <div class="card-icon">☠️</div>
         <div class="card-title">Bestiaire</div>
-        <div class="card-desc">Monstres par thème et difficulté avec stats rapides D&D 5e</div>
-        <span class="card-tag">D&D 5e</span>
+        <div class="card-desc">Stats D&D 5e par thème et difficulté</div>
       </a>
-      <a class="nav-card" href="export.html">
-        <span class="card-icon">📦</span>
+      <a class="card" href="export.html">
+        <div class="card-icon">📦</div>
         <div class="card-title">Export</div>
-        <div class="card-desc">PNG, PDF MJ, JSON sauvegarde et historique des donjons</div>
-        <span class="card-tag">Export</span>
+        <div class="card-desc">PNG · JSON · Fiche MJ · Historique</div>
       </a>
     </div>
   </div>
 </div>
-
-<div class="version-badge">DungeonForge v1.0 — JDR Tools</div>
-
+<div class="ver">DungeonForge v2.0</div>
 <script>
-// Ember particles
-const container = document.getElementById('embers');
-for(let i=0; i<25; i++){
-  const e = document.createElement('div');
-  e.className = 'ember';
-  e.style.cssText = `left:${Math.random()*100}%;--dur:${4+Math.random()*8}s;--delay:${Math.random()*8}s;--drift:${(Math.random()-0.5)*60}px;opacity:0;width:${1+Math.random()*2}px;height:${1+Math.random()*2}px;`;
-  container.appendChild(e);
+const c=document.getElementById('embers');
+for(let i=0;i<28;i++){
+  const e=document.createElement('div');e.className='ember';
+  const s=.8+Math.random()*2;
+  e.style.cssText=`left:${Math.random()*100}%;width:${s}px;height:${s}px;--d:${4+Math.random()*8}s;--dl:${Math.random()*8}s;--dr:${(Math.random()-.5)*60}px`;
+  c.appendChild(e);
 }
 </script>
 </body>

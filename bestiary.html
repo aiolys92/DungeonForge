@@ -216,7 +216,7 @@
 
 <div class="toast"></div>
 
-<script src="data.js"></script>
+<script src="engine.js"></script>
 <script>
 // Build flat monster list with metadata
 const MONSTER_ACTIONS = {
@@ -248,7 +248,7 @@ let allMonsters = [];
 const diffOrder = ['easy','medium','hard','deadly'];
 const seenNames = new Set();
 
-Object.entries(THEMES).forEach(([themeKey, theme]) => {
+Object.entries(DUNGEON_THEMES).forEach(([themeKey, theme]) => {
   diffOrder.forEach(diff => {
     theme.monsters[diff].forEach(m => {
       const key = m.name + themeKey;
@@ -261,7 +261,7 @@ Object.entries(THEMES).forEach(([themeKey, theme]) => {
 });
 
 // Add extra not-yet-seen
-Object.entries(THEMES).forEach(([themeKey, theme]) => {
+Object.entries(DUNGEON_THEMES).forEach(([themeKey, theme]) => {
   diffOrder.forEach(diff => {
     theme.monsters[diff].forEach(m => {
       if (!allMonsters.find(x => x.name === m.name)) {

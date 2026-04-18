@@ -236,7 +236,7 @@
 
 <div class="toast"></div>
 
-<script src="data.js"></script>
+<script src="engine.js"></script>
 <script>
 let dungeon = null;
 let exportRes = 1;
@@ -254,7 +254,7 @@ function init() {
 
 function renderSummary() {
   if (!dungeon) return;
-  const theme = THEMES[dungeon.themeKey];
+  const theme = DUNGEON_DUNGEON_THEMES[dungeon.themeKey];
   const diff = DIFF_LABELS[dungeon.difficulty];
   document.getElementById('current-summary').innerHTML = `
     <div class="df-card" style="padding:0.75rem">
@@ -358,7 +358,7 @@ function exportJSON() {
 
 function exportTXT() {
   if (!dungeon) { showToast('Aucun donjon chargé'); return; }
-  const theme = THEMES[dungeon.themeKey];
+  const theme = DUNGEON_DUNGEON_THEMES[dungeon.themeKey];
   const diff = DIFF_LABELS[dungeon.difficulty];
   let txt = `╔══════════════════════════════════════════════╗\n`;
   txt += `║  DUNGEONFORGE — Fiche MJ                     ║\n`;
@@ -390,7 +390,7 @@ function exportTXT() {
 
 function copyToClipboard() {
   if (!dungeon) { showToast('Aucun donjon chargé'); return; }
-  const theme = THEMES[dungeon.themeKey];
+  const theme = DUNGEON_DUNGEON_THEMES[dungeon.themeKey];
   const diff = DIFF_LABELS[dungeon.difficulty];
   let txt = `**DungeonForge** — ${theme.name} (Seed #${dungeon.seed})\n`;
   txt += `Difficulté : ${diff.label} · ${dungeon.rooms.length} salles · ${dungeon.W}×${dungeon.W}\n\n`;
@@ -409,7 +409,7 @@ function importJSON(input) {
     try {
       const data = JSON.parse(e.target.result);
       if (!data.rooms || !data.seed) throw new Error('Format invalide');
-      localStorage.setItem('df_current', JSON.stringify(data));
+      localStorage.setItem('dfv2_current', JSON.stringify(data));
       dungeon = data;
       document.getElementById('import-status').textContent = `✓ Donjon #${data.seed} chargé`;
       document.getElementById('no-dungeon-msg').style.display = 'none';
@@ -435,7 +435,7 @@ function renderHistory() {
       const d = new Date(e.date);
       return `<tr>
         <td class="seed-col">${themeIcons[e.theme]||''} #${e.seed}</td>
-        <td>${THEMES[e.theme]?.name || e.theme}</td>
+        <td>${DUNGEON_THEMES[e.theme]?.name || e.theme}</td>
         <td>${DIFF_LABELS[e.difficulty]?.label || e.difficulty}</td>
         <td>${e.rooms}</td>
         <td>${e.size}×${e.size}</td>
@@ -454,14 +454,14 @@ function loadFromHistory(seed) {
     seed: entry.seed, themeKey: entry.theme, difficulty: entry.difficulty,
     W: entry.size, rooms: entry.rooms_data, grid: [], corridors: [], config: {}
   };
-  localStorage.setItem('df_current', JSON.stringify(d));
+  localStorage.setItem('dfv2_current', JSON.stringify(d));
   showToast(`Donjon #${seed} rechargé`);
   setTimeout(() => location.reload(), 800);
 }
 
 function clearHistory() {
   if (!confirm('Vider tout l\'historique ?')) return;
-  localStorage.removeItem('df_history');
+  localStorage.removeItem('dfv2_history');
   renderHistory();
   showToast('Historique effacé');
 }
