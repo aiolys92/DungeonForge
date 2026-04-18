@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bestiaire — DungeonForge</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700;900&family=Cinzel:wght@400;600;700&family=Crimson+Pro:ital,wght@0,300;0,400;0,600;1,300;1,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../css/shared.css">
+<style>
+.monster-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1rem;
+}
+
+.monster-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1.25rem;
+  transition: border-color 0.2s;
+  position: relative;
+  overflow: hidden;
+}
+.monster-card::after {
+  content: '';
+  position: absolute; top: 0; right: 0;
+  width: 0; height: 0;
+  border-style: solid;
+  border-width: 0 28px 28px 0;
+  opacity: 0.3;
+}
+.monster-card.cr-easy::after { border-color: transparent #5a8a3a transparent transparent; }
+.monster-card.cr-medium::after { border-color: transparent #d4a040 transparent transparent; }
+.monster-card.cr-hard::after { border-color: transparent #c07030 transparent transparent; }
+.monster-card.cr-deadly::after { border-color: transparent #c04040 transparent transparent; }
+.monster-card:hover { border-color: rgba(180,120,40,0.3); }
+
+.monster-name {
+  font-family: 'Cinzel', serif;
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--gold);
+  margin-bottom: 6px;
+}
+
+.monster-meta {
+  font-family: 'Crimson Pro', serif;
+  font-size: 0.85rem;
+  color: var(--text-dim);
+  font-style: italic;
+  margin-bottom: 10px;
+}
+
+.stat-row {
+  display: flex; gap: 0; flex-wrap: wrap;
+  border: 1px solid rgba(80,60,30,0.2);
+  border-radius: var(--radius);
+  overflow: hidden;
+  margin-bottom: 10px;
+}
+.stat-cell {
+  flex: 1;
+  text-align: center;
+  padding: 6px 4px;
+  border-right: 1px solid rgba(80,60,30,0.15);
+  background: rgba(10,7,5,0.6);
+}
+.stat-cell:last-child { border-right: none; }
+.stat-cell-label {
+  font-family: 'Cinzel', serif;
+  font-size: 0.55rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  display: block;
+}
+.stat-cell-val {
+  font-family: 'Cinzel', serif;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--text);
+  display: block;
+  margin-top: 2px;
+}
+
+.cr-badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 2px 8px;
+  border-radius: var(--radius);
+  font-family: 'Cinzel', serif;
+  font-size: 0.62rem;
+  letter-spacing: 0.1em;
+  border: 1px solid;
+}
+
+.monster-actions {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(80,60,30,0.15);
+}
+.action-item {
+  font-family: 'Crimson Pro', serif;
+  font-size: 0.88rem;
+  color: var(--text-dim);
+  padding: 3px 0;
+  display: flex; gap: 6px;
+}
+.action-item strong {
+  color: var(--gold-dim);
+  font-style: normal;
+}
+
+.filter-group {
+  margin-bottom: 1.25rem;
+}
+
+.search-input {
+  width: 100%;
+  background: rgba(15,10,5,0.9);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-family: 'Crimson Pro', serif;
+  font-size: 0.95rem;
+  padding: 8px 10px;
+  outline: none;
+  margin-bottom: 8px;
+}
+.search-input:focus { border-color: var(--border-bright); }
+
+.chip-group { display: flex; flex-wrap: wrap; gap: 4px; }
+.chip {
+  font-family: 'Cinzel', serif;
+  font-size: 0.6rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 4px 10px;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.chip:hover { border-color: var(--gold-dim); color: var(--gold-dim); }
+.chip.active { border-color: var(--ember); color: var(--ember); background: rgba(232,133,58,0.06); }
+
+.count-bar {
+  font-family: 'Cinzel', serif;
+  font-size: 0.65rem;
+  letter-spacing: 0.12em;
+  color: var(--text-muted);
+  padding: 6px 0 12px;
+  text-transform: uppercase;
+}
+</style>
+</head>
+<body>
+
+<nav class="site-nav">
+  <a class="nav-logo" href="../index.html">⚒ DungeonForge</a>
+  <ul class="nav-links">
+    <li><a href="generator.html">Générateur</a></li>
+    <li><a href="rooms.html">Fiches Salles</a></li>
+    <li><a href="bestiary.html" class="active">Bestiaire</a></li>
+    <li><a href="export.html">Export</a></li>
+  </ul>
+</nav>
+
+<div class="page-layout">
+  <aside class="sidebar">
+    <div class="section-label">Recherche</div>
+    <input class="search-input" type="text" id="search" placeholder="Chercher un monstre..." oninput="applyFilters()">
+
+    <div class="section-label">Difficulté</div>
+    <div class="chip-group" id="diff-chips">
+      <button class="chip active" data-diff="all" onclick="toggleChip(this,'diff')">Tous</button>
+      <button class="chip" data-diff="easy" onclick="toggleChip(this,'diff')">Novice</button>
+      <button class="chip" data-diff="medium" onclick="toggleChip(this,'diff')">Aventurier</button>
+      <button class="chip" data-diff="hard" onclick="toggleChip(this,'diff')">Héroïque</button>
+      <button class="chip" data-diff="deadly" onclick="toggleChip(this,'diff')">Légendaire</button>
+    </div>
+
+    <div class="section-label" style="margin-top:1.25rem">Thème</div>
+    <div class="chip-group" id="theme-chips">
+      <button class="chip active" data-theme="all" onclick="toggleChip(this,'theme')">Tous</button>
+      <button class="chip" data-theme="dungeon" onclick="toggleChip(this,'theme')">🏰 Donjon</button>
+      <button class="chip" data-theme="crypt" onclick="toggleChip(this,'theme')">⚰️ Crypte</button>
+      <button class="chip" data-theme="cave" onclick="toggleChip(this,'theme')">🕳️ Caverne</button>
+      <button class="chip" data-theme="fortress" onclick="toggleChip(this,'theme')">⚒️ Forteresse</button>
+      <button class="chip" data-theme="temple" onclick="toggleChip(this,'theme')">🕍 Temple</button>
+    </div>
+
+    <div class="section-label" style="margin-top:1.25rem">Type de créature</div>
+    <div class="chip-group" id="type-chips">
+      <button class="chip active" data-ctype="all" onclick="toggleChip(this,'ctype')">Tous</button>
+      <button class="chip" data-ctype="Mort-vivant" onclick="toggleChip(this,'ctype')">Mort-vivant</button>
+      <button class="chip" data-ctype="Humanoïde" onclick="toggleChip(this,'ctype')">Humanoïde</button>
+      <button class="chip" data-ctype="Fiélon" onclick="toggleChip(this,'ctype')">Fiélon</button>
+      <button class="chip" data-ctype="Dragon" onclick="toggleChip(this,'ctype')">Dragon</button>
+      <button class="chip" data-ctype="Aberration" onclick="toggleChip(this,'ctype')">Aberration</button>
+      <button class="chip" data-ctype="Géant" onclick="toggleChip(this,'ctype')">Géant</button>
+      <button class="chip" data-ctype="Artificiel" onclick="toggleChip(this,'ctype')">Artificiel</button>
+      <button class="chip" data-ctype="Bête" onclick="toggleChip(this,'ctype')">Bête</button>
+    </div>
+  </aside>
+
+  <main class="main-content">
+    <div class="count-bar" id="count-bar">Chargement...</div>
+    <div class="monster-grid" id="monster-grid"></div>
+  </main>
+</div>
+
+<div class="toast"></div>
+
+<script src="../js/data.js"></script>
+<script>
+// Build flat monster list with metadata
+const MONSTER_ACTIONS = {
+  'Squelettes': [{name:'Épée courte',desc:'Attaque au corps à corps +4, 1d6+2 perforant'}],
+  'Gobelins': [{name:'Cimeterre',desc:'Attaque au corps à corps +4, 1d6+2 tranchant'},{name:'Arc court',desc:'Attaque à distance +4, 1d6+2 perforant'}],
+  'Zombies': [{name:'Coup de poing',desc:'Attaque au corps à corps +3, 1d6+1 contondant'},{name:'Robustesse des morts',desc:'Résistance aux dégâts non-magiques'}],
+  'Orques': [{name:'Hache d\'armes',desc:'Attaque au corps à corps +5, 1d12+3 tranchant'},{name:'Charge agressive',desc:'L\'orque peut se déplacer vers une cible et attaquer en bonus'}],
+  'Trolls': [{name:'Griffes (×2)',desc:'Attaque au corps à corps +7, 2d6+4 tranchant'},{name:'Régénération',desc:'Récupère 10 PV au début de son tour sauf si acide ou feu'}],
+  'Liche': [{name:'Main de paralyse',desc:'Attaque au corps à corps +12, 3d6 froid + paralysie'},{name:'Éclair arcanique',desc:'Jet d\'éclair 8d6, DD Dex 18'},{name:'Phylactère',desc:'Réapparaît dans 1d10 jours si le phylactère est intact'}],
+  'Dragon squelettique': [{name:'Morsure',desc:'Attaque au corps à corps +11, 2d10+7 perforant + 4d8 nécrotique'},{name:'Aura nécrotique',desc:'60 pi — 4d8 nécrotique par round, DD Con 18'}],
+};
+
+const EXTRA_DETAILS = {
+  'Mort-vivant': {str:'—', dex:'+1', con:'—', int:'—', wis:'+0', cha:'-4', speed:'30 pi', senses:'Vision dans le noir 60 pi', immune:'Poison, Épuisement, Charme'},
+  'Humanoïde': {str:'+2', dex:'+1', con:'+1', int:'+0', wis:'+0', cha:'+0', speed:'30 pi', senses:'Vision normale', immune:'—'},
+  'Fiélon': {str:'+4', dex:'+2', con:'+3', int:'+2', wis:'+1', cha:'+3', speed:'30 pi / vol 60 pi', senses:'Vision dans le noir 120 pi', immune:'Feu, Poison'},
+  'Dragon': {str:'+5', dex:'+0', con:'+4', int:'+2', wis:'+2', cha:'+3', speed:'40 pi / vol 80 pi', senses:'Vision aveugle 30 pi, VN 120 pi', immune:'Dépend du dragon'},
+  'Aberration': {str:'+2', dex:'+1', con:'+2', int:'+5', wis:'+3', cha:'+2', speed:'30 pi / nage 40 pi', senses:'Télépathie 120 pi, VN 60 pi', immune:'—'},
+  'Géant': {str:'+5', dex:'-1', con:'+4', int:'-1', wis:'+0', cha:'-1', speed:'40 pi', senses:'Vision normale', immune:'—'},
+  'Artificiel': {str:'+4', dex:'+0', con:'+3', int:'-4', wis:'+0', cha:'-5', speed:'30 pi', senses:'Vision dans le noir 60 pi', immune:'Poison, Psychique, Charme'},
+  'Bête': {str:'+2', dex:'+2', con:'+1', int:'-4', wis:'+1', cha:'-3', speed:'40 pi', senses:'Odorat, VN 30 pi', immune:'—'},
+  'Plante': {str:'+1', dex:'-2', con:'+2', int:'-3', wis:'+0', cha:'-3', speed:'5 pi', senses:'Vision aveugle 30 pi', immune:'Acide, Froid, Feu'},
+  'Céleste': {str:'+3', dex:'+2', con:'+3', int:'+3', wis:'+4', cha:'+5', speed:'30 pi / vol 90 pi', senses:'Vision divine 120 pi', immune:'Radiant, Psychique'},
+  'Élémentaire': {str:'+4', dex:'+0', con:'+3', int:'-3', wis:'+0', cha:'-3', speed:'30 pi / creuser 30 pi', senses:'Vision dans le noir 60 pi', immune:'Poison, Épuisement'},
+};
+
+// Build all monsters
+let allMonsters = [];
+const diffOrder = ['easy','medium','hard','deadly'];
+const seenNames = new Set();
+
+Object.entries(THEMES).forEach(([themeKey, theme]) => {
+  diffOrder.forEach(diff => {
+    theme.monsters[diff].forEach(m => {
+      const key = m.name + themeKey;
+      if (!seenNames.has(m.name)) {
+        seenNames.add(m.name);
+        allMonsters.push({ ...m, themeKey, diff, themeName: theme.name });
+      }
+    });
+  });
+});
+
+// Add extra not-yet-seen
+Object.entries(THEMES).forEach(([themeKey, theme]) => {
+  diffOrder.forEach(diff => {
+    theme.monsters[diff].forEach(m => {
+      if (!allMonsters.find(x => x.name === m.name)) {
+        allMonsters.push({ ...m, themeKey, diff, themeName: theme.name });
+      }
+    });
+  });
+});
+
+let activeDiff = 'all', activeTheme = 'all', activeCtype = 'all', searchStr = '';
+
+function toggleChip(btn, group) {
+  const groupMap = {diff:'diff-chips', theme:'theme-chips', ctype:'type-chips'};
+  const container = document.getElementById(groupMap[group]);
+  container.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+  btn.classList.add('active');
+  if (group === 'diff') activeDiff = btn.dataset.diff;
+  if (group === 'theme') activeTheme = btn.dataset.theme;
+  if (group === 'ctype') activeCtype = btn.dataset.ctype;
+  applyFilters();
+}
+
+function applyFilters() {
+  searchStr = document.getElementById('search').value.toLowerCase();
+  let filtered = allMonsters.filter(m => {
+    if (activeDiff !== 'all' && m.diff !== activeDiff) return false;
+    if (activeTheme !== 'all' && m.themeKey !== activeTheme) return false;
+    if (activeCtype !== 'all' && m.type !== activeCtype) return false;
+    if (searchStr && !m.name.toLowerCase().includes(searchStr) && !m.type.toLowerCase().includes(searchStr)) return false;
+    return true;
+  });
+  document.getElementById('count-bar').textContent = `${filtered.length} créature${filtered.length > 1 ? 's' : ''} trouvée${filtered.length > 1 ? 's' : ''}`;
+  renderMonsters(filtered);
+}
+
+function renderMonsters(list) {
+  const crColors = { easy:'#5a8a3a', medium:'#d4a040', hard:'#c07030', deadly:'#c04040' };
+  const crLabels = { easy:'Novice', medium:'Aventurier', hard:'Héroïque', deadly:'Légendaire' };
+  const themeIcons = { dungeon:'🏰', crypt:'⚰️', cave:'🕳️', fortress:'⚒️', temple:'🕍' };
+
+  const grid = document.getElementById('monster-grid');
+  if (!list.length) {
+    grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:3rem;font-family:'Cinzel',serif;font-size:0.85rem;color:var(--text-muted);letter-spacing:0.1em">AUCUNE CRÉATURE TROUVÉE</div>`;
+    return;
+  }
+
+  grid.innerHTML = list.map(m => {
+    const actions = MONSTER_ACTIONS[m.name] || [{name:'Attaque', desc:`+${Math.floor(m.cr*0.5+2)} au toucher, 1d${[6,8,10,12][Math.floor(Math.random()*4)]} dégâts`}];
+    const detail = EXTRA_DETAILS[m.type] || EXTRA_DETAILS['Humanoïde'];
+    const actHtml = actions.map(a => `<div class="action-item"><strong>${a.name}.</strong> ${a.desc}</div>`).join('');
+    return `<div class="monster-card cr-${m.diff}">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px">
+        <div class="monster-name">${m.name}</div>
+        <span style="color:${crColors[m.diff]};font-family:'Cinzel',serif;font-size:0.65rem;letter-spacing:0.1em">${crLabels[m.diff]}</span>
+      </div>
+      <div class="monster-meta">${m.type} · ${themeIcons[m.themeKey]} ${m.themeName}</div>
+      <div class="stat-row">
+        <div class="stat-cell"><span class="stat-cell-label">CR</span><span class="stat-cell-val" style="color:${crColors[m.diff]}">${m.cr}</span></div>
+        <div class="stat-cell"><span class="stat-cell-label">PV</span><span class="stat-cell-val">${m.hp}</span></div>
+        <div class="stat-cell"><span class="stat-cell-label">CA</span><span class="stat-cell-val">${m.ac}</span></div>
+        <div class="stat-cell"><span class="stat-cell-label">Vitesse</span><span class="stat-cell-val" style="font-size:0.65rem">${detail.speed}</span></div>
+      </div>
+      <div class="stat-row" style="margin-bottom:8px">
+        <div class="stat-cell"><span class="stat-cell-label">FOR</span><span class="stat-cell-val">${detail.str}</span></div>
+        <div class="stat-cell"><span class="stat-cell-label">DEX</span><span class="stat-cell-val">${detail.dex}</span></div>
+        <div class="stat-cell"><span class="stat-cell-label">CON</span><span class="stat-cell-val">${detail.con}</span></div>
+        <div class="stat-cell"><span class="stat-cell-label">INT</span><span class="stat-cell-val">${detail.int}</span></div>
+        <div class="stat-cell"><span class="stat-cell-label">SAG</span><span class="stat-cell-val">${detail.wis}</span></div>
+        <div class="stat-cell"><span class="stat-cell-label">CHA</span><span class="stat-cell-val">${detail.cha}</span></div>
+      </div>
+      <div style="font-family:'Crimson Pro',serif;font-size:0.8rem;color:var(--text-muted);margin-bottom:6px">
+        <span style="color:var(--gold-dim)">Sens :</span> ${detail.senses} · <span style="color:var(--gold-dim)">Immunités :</span> ${detail.immune}
+      </div>
+      <div class="monster-actions">${actHtml}</div>
+    </div>`;
+  }).join('');
+}
+
+applyFilters();
+</script>
+</body>
+</html>

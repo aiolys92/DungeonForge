@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DungeonForge — Générateur de Donjons JDR</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700;900&family=Cinzel:wght@400;600;700&family=Crimson+Pro:ital,wght@0,300;0,400;0,600;1,300;1,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/shared.css">
+<style>
+.hero {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+  padding: 2rem;
+}
+
+.hero-bg {
+  position: absolute; inset: 0;
+  background: radial-gradient(ellipse at 50% 60%, #1a0e05 0%, #0d0a0f 60%, #060408 100%);
+  z-index: 0;
+}
+
+.rune-grid {
+  position: absolute; inset: 0;
+  background-image: 
+    repeating-linear-gradient(0deg, transparent, transparent 59px, rgba(180,120,40,0.04) 60px),
+    repeating-linear-gradient(90deg, transparent, transparent 59px, rgba(180,120,40,0.04) 60px);
+  z-index: 1;
+}
+
+.ember-particles {
+  position: absolute; inset: 0; z-index: 2; pointer-events: none;
+  overflow: hidden;
+}
+
+.ember {
+  position: absolute;
+  bottom: -10px;
+  width: 2px; height: 2px;
+  background: #e8853a;
+  border-radius: 50%;
+  box-shadow: 0 0 4px 1px rgba(232,133,58,0.6);
+  animation: rise var(--dur, 6s) var(--delay, 0s) ease-in infinite;
+  opacity: 0;
+}
+
+@keyframes rise {
+  0% { transform: translateY(0) translateX(0) scale(1); opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 0.5; }
+  100% { transform: translateY(-100vh) translateX(var(--drift,20px)) scale(0.3); opacity: 0; }
+}
+
+.hero-content {
+  position: relative; z-index: 10;
+  text-align: center;
+  max-width: 800px;
+}
+
+.forge-icon {
+  width: 80px; height: 80px;
+  margin: 0 auto 2rem;
+  position: relative;
+}
+
+.forge-icon svg {
+  width: 100%; height: 100%;
+  filter: drop-shadow(0 0 12px rgba(232,133,58,0.5));
+}
+
+.hero-title {
+  font-family: 'Cinzel Decorative', serif;
+  font-size: clamp(2.5rem, 7vw, 5rem);
+  font-weight: 900;
+  color: #f0c060;
+  letter-spacing: 0.05em;
+  line-height: 1.1;
+  margin: 0 0 0.5rem;
+  text-shadow: 0 0 30px rgba(240,192,96,0.3), 0 2px 4px rgba(0,0,0,0.8);
+}
+
+.hero-subtitle {
+  font-family: 'Cinzel', serif;
+  font-size: clamp(0.85rem, 2vw, 1.1rem);
+  color: #a07840;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  margin: 0 0 1rem;
+}
+
+.hero-desc {
+  font-family: 'Crimson Pro', serif;
+  font-size: 1.2rem;
+  color: #9a8878;
+  line-height: 1.7;
+  margin: 0 0 3rem;
+  max-width: 520px;
+  margin-left: auto; margin-right: auto;
+}
+
+.divider-rune {
+  display: flex; align-items: center; gap: 1rem;
+  margin: 1.5rem 0 2.5rem;
+}
+
+.divider-rune::before, .divider-rune::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, #4a3010, transparent);
+}
+
+.divider-rune span {
+  color: #6a4820;
+  font-size: 1.2rem;
+}
+
+.nav-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1.5rem;
+  width: 100%;
+  max-width: 900px;
+}
+
+.nav-card {
+  background: linear-gradient(135deg, rgba(30,18,8,0.95), rgba(20,12,6,0.98));
+  border: 1px solid rgba(180,120,40,0.2);
+  border-radius: 8px;
+  padding: 2rem 1.5rem;
+  text-decoration: none;
+  display: flex; flex-direction: column; align-items: center; gap: 1rem;
+  position: relative; overflow: hidden;
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.nav-card::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: linear-gradient(135deg, rgba(240,192,96,0.03), transparent);
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.nav-card:hover {
+  border-color: rgba(240,192,96,0.4);
+  transform: translateY(-4px);
+  box-shadow: 0 8px 32px rgba(232,133,58,0.15);
+}
+
+.nav-card:hover::before { opacity: 1; }
+
+.card-icon {
+  font-size: 2.5rem;
+  filter: drop-shadow(0 0 8px rgba(232,133,58,0.4));
+}
+
+.card-title {
+  font-family: 'Cinzel', serif;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #d4a040;
+  letter-spacing: 0.1em;
+  text-align: center;
+}
+
+.card-desc {
+  font-family: 'Crimson Pro', serif;
+  font-size: 0.95rem;
+  color: #7a6858;
+  text-align: center;
+  line-height: 1.5;
+}
+
+.card-tag {
+  font-family: 'Cinzel', serif;
+  font-size: 0.65rem;
+  letter-spacing: 0.15em;
+  color: #6a4820;
+  text-transform: uppercase;
+  border: 1px solid rgba(106,72,32,0.4);
+  padding: 3px 10px;
+  border-radius: 20px;
+}
+
+.card-tag.new {
+  color: #8aaa50;
+  border-color: rgba(138,170,80,0.4);
+}
+
+.version-badge {
+  position: fixed; bottom: 1.5rem; right: 1.5rem;
+  font-family: 'Cinzel', serif;
+  font-size: 0.65rem;
+  color: #4a3820;
+  letter-spacing: 0.1em;
+  z-index: 100;
+}
+</style>
+</head>
+<body>
+<div class="hero">
+  <div class="hero-bg"></div>
+  <div class="rune-grid"></div>
+  <div class="ember-particles" id="embers"></div>
+
+  <div class="hero-content">
+    <div class="forge-icon">
+      <svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <polygon points="40,5 75,62 5,62" fill="none" stroke="#b07830" stroke-width="1.5" opacity="0.6"/>
+        <polygon points="40,15 68,58 12,58" fill="none" stroke="#d09840" stroke-width="1" opacity="0.4"/>
+        <circle cx="40" cy="40" r="12" fill="rgba(200,100,30,0.2)" stroke="#e8853a" stroke-width="1.5"/>
+        <path d="M40 28 L40 18 M28 40 L18 40 M52 40 L62 40 M40 52 L40 62" stroke="#d09840" stroke-width="1" opacity="0.6"/>
+        <path d="M33 33 L47 47 M47 33 L33 47" stroke="#e8a050" stroke-width="1.5" stroke-linecap="round"/>
+        <circle cx="40" cy="40" r="4" fill="#f0c060"/>
+        <circle cx="40" cy="40" r="2" fill="#fff8e8"/>
+      </svg>
+    </div>
+
+    <div class="hero-subtitle">Forge de Donjons</div>
+    <h1 class="hero-title">DungeonForge</h1>
+    <div class="divider-rune"><span>⬡</span></div>
+    <p class="hero-desc">
+      Un outil de maître de jeu pour forger des donjons, cryptes et labyrinthes — 
+      avec génération procédurale, fiches de salles et export complet.
+    </p>
+
+    <div class="nav-cards">
+      <a class="nav-card" href="pages/generator.html">
+        <span class="card-icon">🗺️</span>
+        <div class="card-title">Générateur</div>
+        <div class="card-desc">Forge ton donjon aléatoire avec zoom, seed et édition de salles</div>
+        <span class="card-tag new">Nouveau</span>
+      </a>
+      <a class="nav-card" href="pages/rooms.html">
+        <span class="card-icon">📜</span>
+        <div class="card-title">Fiches Salles</div>
+        <div class="card-desc">Détail narratif de chaque salle, monstres, trésors et roleplay</div>
+        <span class="card-tag">MJ</span>
+      </a>
+      <a class="nav-card" href="pages/bestiary.html">
+        <span class="card-icon">☠️</span>
+        <div class="card-title">Bestiaire</div>
+        <div class="card-desc">Monstres par thème et difficulté avec stats rapides D&D 5e</div>
+        <span class="card-tag">D&D 5e</span>
+      </a>
+      <a class="nav-card" href="pages/export.html">
+        <span class="card-icon">📦</span>
+        <div class="card-title">Export</div>
+        <div class="card-desc">PNG, PDF MJ, JSON sauvegarde et historique des donjons</div>
+        <span class="card-tag">Export</span>
+      </a>
+    </div>
+  </div>
+</div>
+
+<div class="version-badge">DungeonForge v1.0 — JDR Tools</div>
+
+<script>
+// Ember particles
+const container = document.getElementById('embers');
+for(let i=0; i<25; i++){
+  const e = document.createElement('div');
+  e.className = 'ember';
+  e.style.cssText = `left:${Math.random()*100}%;--dur:${4+Math.random()*8}s;--delay:${Math.random()*8}s;--drift:${(Math.random()-0.5)*60}px;opacity:0;width:${1+Math.random()*2}px;height:${1+Math.random()*2}px;`;
+  container.appendChild(e);
+}
+</script>
+</body>
+</html>

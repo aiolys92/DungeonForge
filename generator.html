@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Générateur — DungeonForge</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700;900&family=Cinzel:wght@400;600;700&family=Crimson+Pro:ital,wght@0,300;0,400;0,600;1,300;1,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../css/shared.css">
+<style>
+.map-wrapper {
+  position: relative;
+  background: #06040a;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  cursor: grab;
+  user-select: none;
+  height: calc(100vh - 220px);
+  min-height: 400px;
+}
+.map-wrapper:active { cursor: grabbing; }
+
+#map-canvas {
+  position: absolute;
+  top: 0; left: 0;
+  image-rendering: pixelated;
+  transform-origin: 0 0;
+}
+
+.map-controls {
+  position: absolute; top: 10px; right: 10px;
+  display: flex; gap: 6px; z-index: 10;
+  flex-direction: column;
+}
+
+.map-btn {
+  width: 32px; height: 32px;
+  background: rgba(10,7,5,0.9);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--gold-dim);
+  font-size: 1rem;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.2s;
+}
+.map-btn:hover { border-color: var(--border-bright); color: var(--gold); }
+.map-btn.active { border-color: var(--ember); color: var(--ember); }
+
+.zoom-level {
+  font-family: 'Cinzel', serif;
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  text-align: center;
+  letter-spacing: 0.1em;
+}
+
+.seed-row {
+  display: flex; gap: 6px; align-items: center;
+}
+.seed-row input {
+  font-family: 'Cinzel', serif;
+  font-size: 0.8rem;
+  letter-spacing: 0.08em;
+  text-align: center;
+  width: 100%;
+}
+
+.diff-bar {
+  height: 4px;
+  border-radius: 2px;
+  margin-top: 4px;
+  transition: background 0.3s, width 0.3s;
+  background: var(--success);
+}
+
+.stat-bar { margin: 8px 0; }
+
+.room-panel {
+  background: rgba(12,8,4,0.97);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1rem;
+  margin-top: 1rem;
+  min-height: 80px;
+}
+
+.room-panel h3 {
+  font-family: 'Cinzel', serif;
+  font-size: 0.85rem;
+  letter-spacing: 0.1em;
+  color: var(--gold);
+  margin-bottom: 0.75rem;
+  display: flex; align-items: center; gap: 8px;
+}
+
+.room-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+
+.room-detail-row {
+  display: flex; gap: 8px; margin-bottom: 6px; align-items: flex-start;
+}
+.room-detail-label {
+  font-family: 'Cinzel', serif;
+  font-size: 0.62rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  min-width: 60px;
+  padding-top: 1px;
+}
+.room-detail-val {
+  font-family: 'Crimson Pro', serif;
+  font-size: 0.9rem;
+  color: var(--text);
+  line-height: 1.4;
+  flex: 1;
+}
+
+.edit-note {
+  width: 100%;
+  background: rgba(10,7,5,0.8);
+  border: 1px solid rgba(100,70,30,0.2);
+  border-radius: var(--radius);
+  color: var(--text-dim);
+  font-family: 'Crimson Pro', serif;
+  font-size: 0.9rem;
+  padding: 6px 8px;
+  resize: vertical;
+  min-height: 52px;
+  outline: none;
+  margin-top: 6px;
+}
+.edit-note:focus { border-color: var(--border); }
+
+.history-list { margin-top: 0.75rem; }
+.history-item {
+  padding: 8px 10px;
+  border: 1px solid rgba(80,60,30,0.3);
+  border-radius: var(--radius);
+  margin-bottom: 6px;
+  cursor: pointer;
+  transition: border-color 0.2s;
+  display: flex; justify-content: space-between; align-items: center;
+}
+.history-item:hover { border-color: var(--gold-dim); }
+.history-seed {
+  font-family: 'Cinzel', serif;
+  font-size: 0.72rem;
+  color: var(--gold-dim);
+  letter-spacing: 0.08em;
+}
+.history-meta {
+  font-family: 'Crimson Pro', serif;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+/* Keyboard shortcut hint */
+.kbd {
+  display: inline-block;
+  background: rgba(40,30,20,0.8);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 1px 5px;
+  font-family: monospace;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+.map-legend {
+  position: absolute; bottom: 10px; left: 10px;
+  background: rgba(6,4,10,0.88);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 8px 10px;
+  z-index: 10;
+  display: flex; flex-direction: column; gap: 4px;
+}
+.legend-row { display: flex; align-items: center; gap: 6px; font-family: 'Cinzel', serif; font-size: 0.6rem; letter-spacing: 0.1em; color: var(--text-muted); }
+.legend-swatch { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
+
+.minimap-wrap {
+  position: absolute; bottom: 10px; right: 10px;
+  background: rgba(6,4,10,0.88);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 4px;
+  z-index: 10;
+}
+#minimap { display: block; }
+
+.theme-icon { font-size: 1.1rem; }
+</style>
+</head>
+<body>
+
+<nav class="site-nav">
+  <a class="nav-logo" href="../index.html">⚒ DungeonForge</a>
+  <ul class="nav-links">
+    <li><a href="generator.html" class="active">Générateur</a></li>
+    <li><a href="rooms.html">Fiches Salles</a></li>
+    <li><a href="bestiary.html">Bestiaire</a></li>
+    <li><a href="export.html">Export</a></li>
+  </ul>
+</nav>
+
+<div class="page-layout">
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="section-label">Configuration</div>
+
+    <div class="ctrl-block">
+      <label>Taille <span class="val" id="v-size">Moyen 28×28</span></label>
+      <select id="sz" onchange="updateSizeLabel()">
+        <option value="18">Petit (18×18)</option>
+        <option value="28" selected>Moyen (28×28)</option>
+        <option value="40">Grand (40×40)</option>
+        <option value="55">Épique (55×55)</option>
+      </select>
+    </div>
+
+    <div class="ctrl-block">
+      <label>Nombre de salles <span class="val" id="v-rooms">8</span></label>
+      <input type="range" id="rooms" min="4" max="20" value="8" oninput="document.getElementById('v-rooms').textContent=this.value">
+    </div>
+
+    <div class="ctrl-block">
+      <label>Thème <span class="val theme-icon" id="v-theme-icon">🏰</span></label>
+      <select id="theme" onchange="updateThemeIcon()">
+        <option value="dungeon">🏰 Donjon Classique</option>
+        <option value="crypt">⚰️ Crypte Maudite</option>
+        <option value="cave">🕳️ Caverne Naturelle</option>
+        <option value="fortress">⚒️ Forteresse Naine</option>
+        <option value="temple">🕍 Temple Oublié</option>
+      </select>
+    </div>
+
+    <div class="ctrl-block">
+      <label>Difficulté <span class="val" id="v-diff">Aventurier</span></label>
+      <select id="diff" onchange="updateDiffBar()">
+        <option value="easy">Novice (niv. 1–4)</option>
+        <option value="medium" selected>Aventurier (niv. 5–10)</option>
+        <option value="hard">Héroïque (niv. 11–16)</option>
+        <option value="deadly">Légendaire (niv. 17+)</option>
+      </select>
+      <div class="diff-bar" id="diff-bar" style="width:50%"></div>
+    </div>
+
+    <div class="ctrl-block">
+      <label>Densité couloirs <span class="val" id="v-corr">50%</span></label>
+      <input type="range" id="corr" min="20" max="90" value="50" oninput="document.getElementById('v-corr').textContent=this.value+'%'">
+    </div>
+
+    <div class="ctrl-block">
+      <label>Pièges & secrets <span class="val" id="v-trap">30%</span></label>
+      <input type="range" id="trap" min="0" max="80" value="30" oninput="document.getElementById('v-trap').textContent=this.value+'%'">
+    </div>
+
+    <div class="ctrl-block">
+      <label>Seed</label>
+      <div class="seed-row">
+        <input type="text" id="seed-input" placeholder="ex: 42137" value="">
+        <button class="btn" onclick="rerollSeed()" data-tip="Nouveau seed aléatoire" style="padding:7px 10px;flex-shrink:0">🎲</button>
+      </div>
+    </div>
+
+    <div class="rune-sep"><span>⬡</span></div>
+
+    <div class="btn-group" style="margin-bottom:10px">
+      <button class="btn btn-primary" onclick="generate()" style="flex:1">⚒ Forger <span class="kbd">Espace</span></button>
+    </div>
+    <div class="btn-group">
+      <button class="btn" onclick="toggleGrid()" id="btn-grid">Grille</button>
+      <button class="btn" onclick="toggleNums()" id="btn-nums" class="active">Numéros</button>
+      <button class="btn" onclick="resetView()">⌂ Reset vue</button>
+    </div>
+
+    <div class="rune-sep" style="margin-top:1rem"><span>Histoire</span></div>
+    <div class="history-list" id="history-list">
+      <div style="font-family:'Crimson Pro',serif;font-size:0.85rem;color:var(--text-muted);text-align:center;padding:1rem 0">Aucun donjon forgé</div>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main-content">
+    <!-- Stats bar -->
+    <div class="stat-bar" id="stat-bar">
+      <span class="stat-item"><span class="stat-dot" style="background:#4a4a6a"></span>SALLES <span class="stat-val" id="st-rooms">—</span></span>
+      <span class="stat-item"><span class="stat-dot" style="background:#c94040"></span>BOSS <span class="stat-val" id="st-boss">—</span></span>
+      <span class="stat-item"><span class="stat-dot" style="background:#5a8a5a"></span>SPÉCIALES <span class="stat-val" id="st-special">—</span></span>
+      <span class="stat-item"><span class="stat-dot" style="background:#8a3a3a"></span>PIÈGES <span class="stat-val" id="st-traps">—</span></span>
+      <span class="stat-item"><span class="stat-dot" style="background:#7a4a9a"></span>SECRETS <span class="stat-val" id="st-secrets">—</span></span>
+      <span class="stat-item"><span class="stat-dot" style="background:#c97a30"></span>TRÉSORS <span class="stat-val" id="st-treasures">—</span></span>
+    </div>
+
+    <!-- Map -->
+    <div class="map-wrapper" id="map-wrap">
+      <canvas id="map-canvas"></canvas>
+
+      <div class="map-controls">
+        <button class="map-btn" onclick="zoomIn()" data-tip="Zoom +" title="Zoom +">+</button>
+        <button class="map-btn" onclick="zoomOut()" data-tip="Zoom -" title="Zoom -">−</button>
+        <div class="zoom-level" id="zoom-label">100%</div>
+      </div>
+
+      <div class="map-legend" id="map-legend" style="display:none">
+        <div class="legend-row"><span class="legend-swatch" style="background:#4a4a7a"></span>Salle</div>
+        <div class="legend-row"><span class="legend-swatch" style="background:#e8b84b"></span>Entrée</div>
+        <div class="legend-row"><span class="legend-swatch" style="background:#c94040"></span>Boss</div>
+        <div class="legend-row"><span class="legend-swatch" style="background:#3d6b3d"></span>Spéciale</div>
+        <div class="legend-row"><span class="legend-swatch" style="background:#8a3a3a"></span>Piège</div>
+        <div class="legend-row"><span class="legend-swatch" style="background:#5a3a8a"></span>Secret</div>
+      </div>
+
+      <canvas id="minimap" width="100" height="100"></canvas>
+      <div class="minimap-wrap" id="minimap-wrap" style="display:none">
+        <canvas id="minimap" width="100" height="100"></canvas>
+      </div>
+
+      <div id="map-placeholder" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1rem;pointer-events:none">
+        <div style="font-size:3rem;opacity:0.15">⚒</div>
+        <div style="font-family:'Cinzel',serif;font-size:0.85rem;letter-spacing:0.15em;color:var(--text-muted);text-transform:uppercase">Forge ton premier donjon</div>
+        <div style="font-family:'Crimson Pro',serif;font-size:0.85rem;color:var(--text-muted)">Configure les paramètres et appuie sur <strong style="color:var(--gold-dim)">⚒ Forger</strong></div>
+      </div>
+    </div>
+
+    <!-- Room detail panel -->
+    <div class="room-panel" id="room-panel">
+      <div style="font-family:'Cinzel',serif;font-size:0.75rem;letter-spacing:0.1em;color:var(--text-muted);text-align:center;padding:0.5rem 0">
+        Cliquez sur une salle pour voir ses détails
+      </div>
+    </div>
+  </main>
+</div>
+
+<div class="toast"></div>
+
+<script src="../js/data.js"></script>
+<script>
+let dungeon = null;
+let selectedId = null;
+let showGrid = false;
+let showNums = true;
+let zoom = 1;
+let panX = 0, panY = 0;
+let isPanning = false, lastPX = 0, lastPY = 0;
+
+// Init seed
+document.getElementById('seed-input').value = newSeed();
+
+function rerollSeed() {
+  document.getElementById('seed-input').value = newSeed();
+  showToast('Nouveau seed généré');
+}
+
+function updateSizeLabel() {
+  const sz = document.getElementById('sz');
+  const opts = {18:'Petit 18×18', 28:'Moyen 28×28', 40:'Grand 40×40', 55:'Épique 55×55'};
+  document.getElementById('v-size').textContent = opts[sz.value] || sz.value+'×'+sz.value;
+}
+
+function updateThemeIcon() {
+  const icons = {dungeon:'🏰', crypt:'⚰️', cave:'🕳️', fortress:'⚒️', temple:'🕍'};
+  document.getElementById('v-theme-icon').textContent = icons[document.getElementById('theme').value] || '🏰';
+}
+
+function updateDiffBar() {
+  const d = document.getElementById('diff').value;
+  const bar = document.getElementById('diff-bar');
+  const labels = {easy:{w:'25%',c:'#5a8a3a',l:'Novice'}, medium:{w:'50%',c:'#d4a040',l:'Aventurier'}, hard:{w:'75%',c:'#c07030',l:'Héroïque'}, deadly:{w:'100%',c:'#c04040',l:'Légendaire'}};
+  const v = labels[d];
+  bar.style.width = v.w; bar.style.background = v.c;
+  document.getElementById('v-diff').textContent = v.l;
+}
+
+function generate() {
+  const seedVal = parseInt(document.getElementById('seed-input').value) || newSeed();
+  document.getElementById('seed-input').value = seedVal;
+
+  const config = {
+    size: parseInt(document.getElementById('sz').value),
+    numRooms: parseInt(document.getElementById('rooms').value),
+    themeKey: document.getElementById('theme').value,
+    difficulty: document.getElementById('diff').value,
+    corrDensity: parseInt(document.getElementById('corr').value) / 100,
+    trapChance: parseInt(document.getElementById('trap').value) / 100,
+    seed: seedVal
+  };
+
+  dungeon = generateDungeon(config);
+  saveDungeon(dungeon);
+  selectedId = null;
+  zoom = 1; panX = 0; panY = 0;
+  document.getElementById('map-placeholder').style.display = 'none';
+  document.getElementById('map-legend').style.display = 'flex';
+  document.getElementById('minimap-wrap').style.display = 'block';
+  updateStats();
+  render();
+  updateHistory();
+  document.getElementById('room-panel').innerHTML = `<div style="font-family:'Cinzel',serif;font-size:0.75rem;letter-spacing:0.1em;color:var(--text-muted);text-align:center;padding:0.5rem 0">Cliquez sur une salle pour voir ses détails</div>`;
+  showToast(`✓ Donjon forgé — seed ${seedVal}`);
+}
+
+function updateStats() {
+  if (!dungeon) return;
+  const rs = dungeon.rooms;
+  document.getElementById('st-rooms').textContent = rs.length;
+  document.getElementById('st-boss').textContent = rs.filter(r=>r.type==='boss').length;
+  document.getElementById('st-special').textContent = rs.filter(r=>r.type==='special').length;
+  document.getElementById('st-traps').textContent = rs.filter(r=>r.traps.length).length;
+  document.getElementById('st-secrets').textContent = rs.filter(r=>r.secrets.length).length;
+  document.getElementById('st-treasures').textContent = rs.filter(r=>r.treasure.length).length;
+}
+
+// RENDERING
+function render() {
+  if (!dungeon) return;
+  const { grid, rooms, W } = dungeon;
+  const wrap = document.getElementById('map-wrap');
+  const canvas = document.getElementById('map-canvas');
+  const ctx = canvas.getContext('2d');
+  const cs = Math.max(8, Math.floor(Math.min(wrap.clientWidth, wrap.clientHeight) / W));
+  canvas.width = cs * W; canvas.height = cs * W;
+  canvas.style.transform = `translate(${panX}px,${panY}px) scale(${zoom})`;
+
+  // Background
+  ctx.fillStyle = '#040208';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // Noise texture suggestion
+  for (let i = 0; i < 500; i++) {
+    ctx.fillStyle = `rgba(${60+Math.random()*20},${40+Math.random()*20},${80+Math.random()*20},${0.03+Math.random()*0.05})`;
+    ctx.fillRect(Math.random()*canvas.width, Math.random()*canvas.height, 2, 2);
+  }
+
+  // Draw cells
+  for (let y = 0; y < W; y++) {
+    for (let x = 0; x < W; x++) {
+      if (grid[y][x] === 0) continue;
+      if (grid[y][x] === 2) {
+        ctx.fillStyle = '#181430';
+        ctx.fillRect(x*cs, y*cs, cs, cs);
+        // Subtle floor detail
+        ctx.fillStyle = 'rgba(80,60,100,0.12)';
+        ctx.fillRect(x*cs+1, y*cs+1, cs-2, cs-2);
+      }
+    }
+  }
+
+  // Room fills
+  const roomColors = {
+    normal: '#252245', entry: '#3a2e08', boss: '#2a0808', special: '#0f2010',
+    secret: '#180a30', trap: '#200808'
+  };
+  const roomBorders = {
+    normal: 'rgba(80,70,140,0.5)', entry: 'rgba(240,192,96,0.6)', boss: 'rgba(200,60,60,0.6)',
+    special: 'rgba(80,160,80,0.5)', secret: 'rgba(140,80,200,0.5)', trap: 'rgba(180,60,60,0.5)'
+  };
+
+  for (const r of rooms) {
+    // Room floor
+    ctx.fillStyle = roomColors[r.type] || roomColors.normal;
+    ctx.fillRect(r.x*cs, r.y*cs, r.w*cs, r.h*cs);
+
+    // Floor tiles pattern
+    ctx.fillStyle = 'rgba(255,255,255,0.02)';
+    const tileS = Math.max(4, cs);
+    for (let ty = r.y*cs; ty < (r.y+r.h)*cs; ty += tileS) {
+      for (let tx = r.x*cs; tx < (r.x+r.w)*cs; tx += tileS) {
+        ctx.fillRect(tx, ty, tileS-1, tileS-1);
+      }
+    }
+
+    // Selected
+    if (selectedId === r.id) {
+      ctx.fillStyle = 'rgba(240,192,96,0.12)';
+      ctx.fillRect(r.x*cs, r.y*cs, r.w*cs, r.h*cs);
+      ctx.strokeStyle = 'rgba(240,192,96,0.7)';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(r.x*cs+1, r.y*cs+1, r.w*cs-2, r.h*cs-2);
+    } else {
+      ctx.strokeStyle = roomBorders[r.type] || roomBorders.normal;
+      ctx.lineWidth = 1;
+      ctx.strokeRect(r.x*cs+0.5, r.y*cs+0.5, r.w*cs-1, r.h*cs-1);
+    }
+
+    // Icons
+    const icSize = Math.max(10, Math.min(16, cs * 1.0));
+    ctx.font = `${icSize}px serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    const icons = {entry:'🚪', boss:'💀', special:'⭐', secret:'🔮', trap:'⚠️'};
+    const ico = icons[r.type];
+    if (ico && r.w*cs > 20 && r.h*cs > 20) {
+      ctx.fillText(ico, r.cx*cs+cs/2, r.cy*cs+cs/2 - (showNums?icSize*0.7:0));
+    }
+
+    // Room number
+    if (showNums) {
+      const fs = Math.max(9, Math.min(14, cs * 0.85));
+      ctx.font = `bold ${fs}px 'Cinzel', serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle = 'rgba(220,200,160,0.9)';
+      ctx.fillText(r.id, r.cx*cs+cs/2, r.cy*cs+cs/2 + (ico?icSize*0.7:0));
+    }
+  }
+
+  // Grid overlay
+  if (showGrid) {
+    ctx.strokeStyle = 'rgba(100,80,140,0.12)';
+    ctx.lineWidth = 0.5;
+    for (let i = 0; i <= W; i++) {
+      ctx.beginPath(); ctx.moveTo(i*cs, 0); ctx.lineTo(i*cs, canvas.height); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(0, i*cs); ctx.lineTo(canvas.width, i*cs); ctx.stroke();
+    }
+  }
+
+  // Update zoom label
+  document.getElementById('zoom-label').textContent = Math.round(zoom*100)+'%';
+
+  // Minimap
+  renderMinimap();
+}
+
+function renderMinimap() {
+  if (!dungeon) return;
+  const mc = document.getElementById('minimap');
+  if (!mc) return;
+  const ctx = mc.getContext('2d');
+  const { grid, rooms, W } = dungeon;
+  const s = 100 / W;
+  ctx.clearRect(0, 0, 100, 100);
+  ctx.fillStyle = '#04020a';
+  ctx.fillRect(0, 0, 100, 100);
+  for (let y = 0; y < W; y++) for (let x = 0; x < W; x++) {
+    if (grid[y][x] === 2) { ctx.fillStyle = '#181430'; ctx.fillRect(x*s, y*s, s, s); }
+  }
+  for (const r of rooms) {
+    const colors = {normal:'#252245',entry:'#3a2e08',boss:'#2a0808',special:'#0f2010',secret:'#180a30',trap:'#200808'};
+    ctx.fillStyle = colors[r.type] || colors.normal;
+    ctx.fillRect(r.x*s, r.y*s, r.w*s, r.h*s);
+  }
+  // Viewport indicator
+  const canvas = document.getElementById('map-canvas');
+  const wrap = document.getElementById('map-wrap');
+  const vw = wrap.clientWidth / (canvas.width * zoom / 100) * 100;
+  const vh = wrap.clientHeight / (canvas.height * zoom / 100) * 100;
+  const vx = -panX / (canvas.width * zoom) * 100;
+  const vy = -panY / (canvas.height * zoom) * 100;
+  ctx.strokeStyle = 'rgba(240,192,96,0.5)';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(vx, vy, vw, vh);
+}
+
+// PAN & ZOOM
+const mapWrap = document.getElementById('map-wrap');
+mapWrap.addEventListener('mousedown', e => {
+  if (e.target.tagName === 'BUTTON') return;
+  isPanning = true; lastPX = e.clientX; lastPY = e.clientY;
+});
+window.addEventListener('mousemove', e => {
+  if (!isPanning) return;
+  panX += e.clientX - lastPX;
+  panY += e.clientY - lastPY;
+  lastPX = e.clientX; lastPY = e.clientY;
+  clampPan(); applyTransform(); renderMinimap();
+});
+window.addEventListener('mouseup', () => isPanning = false);
+
+mapWrap.addEventListener('wheel', e => {
+  e.preventDefault();
+  const delta = e.deltaY > 0 ? 0.85 : 1.15;
+  zoom = Math.max(0.3, Math.min(6, zoom * delta));
+  clampPan(); applyTransform();
+}, { passive: false });
+
+function applyTransform() {
+  document.getElementById('map-canvas').style.transform = `translate(${panX}px,${panY}px) scale(${zoom})`;
+  document.getElementById('zoom-label').textContent = Math.round(zoom*100)+'%';
+}
+function clampPan() {
+  const canvas = document.getElementById('map-canvas');
+  const wrap = document.getElementById('map-wrap');
+  const maxX = 50, maxY = 50;
+  const minX = -(canvas.width * zoom - wrap.clientWidth) - maxX;
+  const minY = -(canvas.height * zoom - wrap.clientHeight) - maxY;
+  panX = Math.max(Math.min(panX, maxX+50), minX);
+  panY = Math.max(Math.min(panY, maxY+50), minY);
+}
+
+function zoomIn() { zoom = Math.min(6, zoom * 1.3); clampPan(); applyTransform(); renderMinimap(); }
+function zoomOut() { zoom = Math.max(0.3, zoom / 1.3); clampPan(); applyTransform(); renderMinimap(); }
+function resetView() { zoom = 1; panX = 0; panY = 0; applyTransform(); renderMinimap(); }
+
+// CLICK to select room
+mapWrap.addEventListener('click', e => {
+  if (!dungeon || Math.abs(e.movementX) + Math.abs(e.movementY) > 3) return;
+  if (e.target.tagName === 'BUTTON') return;
+  const canvas = document.getElementById('map-canvas');
+  const rect = mapWrap.getBoundingClientRect();
+  const mx = (e.clientX - rect.left - panX) / zoom;
+  const my = (e.clientY - rect.top - panY) / zoom;
+  const cs = canvas.width / dungeon.W;
+  const gx = Math.floor(mx / cs), gy = Math.floor(my / cs);
+  for (const r of dungeon.rooms) {
+    if (gx >= r.x && gx < r.x+r.w && gy >= r.y && gy < r.y+r.h) {
+      selectedId = r.id;
+      showRoomPanel(r);
+      render();
+      return;
+    }
+  }
+});
+
+// Room panel
+function showRoomPanel(r) {
+  const typeLabels = {entry:'Entrée',boss:'Boss / Trésor',special:'Salle spéciale',secret:'Passage secret',trap:'Salle piégée',normal:'Salle standard'};
+  const typeBadge = {entry:'badge-gold',boss:'badge-red',special:'badge-green',secret:'badge-purple',trap:'badge-ember',normal:'badge-grey'};
+  let html = `<h3>
+    <span>Salle ${r.id}</span>
+    <span class="badge ${typeBadge[r.type]||'badge-grey'}">${typeLabels[r.type]||r.type}</span>
+    <span style="font-family:'Crimson Pro',serif;font-weight:400;color:var(--text);letter-spacing:0;font-size:1rem">— ${r.name}</span>
+  </h3>`;
+  if (r.monsters.length) html += `<div class="room-detail-row"><span class="room-detail-label">⚔ Monstres</span><span class="room-detail-val">${r.monsters.map(m=>m.name).join(', ')}</span></div>`;
+  if (r.traps.length) html += `<div class="room-detail-row"><span class="room-detail-label">⚠ Pièges</span><span class="room-detail-val">${r.traps.join(', ')}</span></div>`;
+  if (r.secrets.length) html += `<div class="room-detail-row"><span class="room-detail-label">◆ Secrets</span><span class="room-detail-val">${r.secrets.join(', ')}</span></div>`;
+  if (r.treasure.length) html += `<div class="room-detail-row"><span class="room-detail-label">💰 Trésor</span><span class="room-detail-val">${r.treasure.join(', ')}</span></div>`;
+  html += `<div class="room-detail-row"><span class="room-detail-label">📝 Notes MJ</span><span class="room-detail-val" style="flex:1"><textarea class="edit-note" id="note-${r.id}" onchange="saveNote(${r.id})" placeholder="Ajoute tes notes ici...">${r.notes||''}</textarea></span></div>`;
+  html += `<div style="margin-top:8px;display:flex;gap:6px">
+    <button class="btn" onclick="rerollRoom(${r.id})">🎲 Re-randomiser</button>
+    <button class="btn" onclick="goToRooms()">📜 Fiche complète</button>
+  </div>`;
+  document.getElementById('room-panel').innerHTML = html;
+}
+
+function saveNote(id) {
+  if (!dungeon) return;
+  const r = dungeon.rooms.find(r=>r.id===id);
+  if (r) { r.notes = document.getElementById(`note-${r.id}`).value; saveDungeon(dungeon); }
+}
+
+function rerollRoom(id) {
+  if (!dungeon) return;
+  const r = dungeon.rooms.find(r=>r.id===id);
+  if (!r || r.type==='entry') return;
+  const theme = THEMES[dungeon.themeKey];
+  const diff = dungeon.difficulty;
+  r.monsters = Math.random()>0.3 ? [pick(theme.monsters[diff])] : [];
+  r.traps = Math.random()<0.3 ? [pick(theme.traps)] : [];
+  r.secrets = Math.random()<0.15 ? [pick(theme.secrets)] : [];
+  r.treasure = Math.random()<0.2 ? [pick(theme.treasures)] : [];
+  saveDungeon(dungeon);
+  showRoomPanel(r);
+  render();
+  showToast('Salle re-randomisée');
+}
+
+function goToRooms() { localStorage.setItem('df_current', JSON.stringify(dungeon)); window.location.href = 'rooms.html'; }
+
+// Toggles
+function toggleGrid() {
+  showGrid = !showGrid;
+  document.getElementById('btn-grid').classList.toggle('active', showGrid);
+  render();
+}
+function toggleNums() {
+  showNums = !showNums;
+  document.getElementById('btn-nums').classList.toggle('active', showNums);
+  render();
+}
+
+// History
+function updateHistory() {
+  const h = loadHistory();
+  const container = document.getElementById('history-list');
+  if (!h.length) { container.innerHTML = '<div style="font-family:\'Crimson Pro\',serif;font-size:0.85rem;color:var(--text-muted);text-align:center;padding:0.5rem 0">Aucun donjon</div>'; return; }
+  container.innerHTML = h.slice(0,5).map(e => {
+    const d = new Date(e.date);
+    const dateStr = d.toLocaleDateString('fr-FR', {day:'2-digit',month:'short'});
+    const themes = {dungeon:'🏰',crypt:'⚰️',cave:'🕳️',fortress:'⚒️',temple:'🕍'};
+    return `<div class="history-item" onclick="loadSeed(${e.seed})">
+      <div><div class="history-seed">${themes[e.theme]||''} #${e.seed}</div><div class="history-meta">${e.rooms} salles · ${DIFF_LABELS[e.difficulty]?.label||e.difficulty}</div></div>
+      <div class="history-meta">${dateStr}</div>
+    </div>`;
+  }).join('');
+}
+
+function loadSeed(seed) {
+  document.getElementById('seed-input').value = seed;
+  showToast('Seed chargé — appuyez sur Forger');
+}
+
+// Keyboard
+document.addEventListener('keydown', e => {
+  if (e.code === 'Space' && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') {
+    e.preventDefault(); generate();
+  }
+  if (e.code === 'Equal' || e.code === 'NumpadAdd') zoomIn();
+  if (e.code === 'Minus' || e.code === 'NumpadSubtract') zoomOut();
+  if (e.code === 'KeyR' && document.activeElement.tagName !== 'INPUT') { resetView(); }
+});
+
+// Init
+updateSizeLabel(); updateThemeIcon(); updateDiffBar();
+updateHistory();
+const saved = loadCurrent();
+if (saved) { dungeon = saved; updateStats(); render(); document.getElementById('map-placeholder').style.display='none'; document.getElementById('map-legend').style.display='flex'; document.getElementById('minimap-wrap').style.display='block'; }
+</script>
+</body>
+</html>
