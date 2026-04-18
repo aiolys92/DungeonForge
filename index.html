@@ -3,10 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>DungeonForge v2</title>
+<title>DungeonForge</title>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Cinzel:wght@400;600;700&family=Crimson+Pro:ital,wght@0,300;0,400;0,600;1,400&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
-
 </head>
 <body>
 
@@ -22,92 +21,126 @@
   <div class="nav-seed-wrap">
     <span class="seed-lbl">Seed</span>
     <div class="seed-disp" id="seed-disp" title="Cliquer pour copier">#—</div>
-    <button class="mb" onclick="rerollSeed()" title="Nouveau seed">🎲</button>
+    <button class="mb" onclick="rerollSeed()" title="Nouveau seed + regénérer">🎲</button>
   </div>
 </nav>
 
-<!-- APP -->
 <div class="app">
 
   <!-- ── LEFT SIDEBAR ── -->
   <aside class="sidebar">
-    <div class="sec">Donjon</div>
+
+    <div class="sec">Carte</div>
 
     <div class="ctrl">
-      <label>Taille <span class="v" id="v-sz">60×60</span></label>
-      <select id="sz" onchange="updSz()">
-        <option value="30">Petit — 30×30</option>
-        <option value="45">Moyen — 45×45</option>
-        <option value="60" selected>Grand — 60×60</option>
-        <option value="80">Épique — 80×80</option>
-        <option value="110">Colossal — 110×110</option>
-      </select>
-    </div>
-
-    <div class="ctrl">
-      <label>Thème</label>
-      <select id="theme">
-        <option value="dungeon">🏰 Donjon Classique</option>
-        <option value="crypt">⚰️ Crypte Maudite</option>
-        <option value="cave">🕳️ Caverne Naturelle</option>
-        <option value="fortress">⚒️ Forteresse Naine</option>
-        <option value="temple">🕍 Temple Oublié</option>
-      </select>
-    </div>
-
-    <div class="ctrl">
-      <label>Difficulté <span class="v" id="v-diff">Aventurier</span></label>
-      <select id="diff" onchange="updDiff()">
-        <option value="easy">Novice · niv 1–4</option>
-        <option value="medium" selected>Aventurier · niv 5–10</option>
-        <option value="hard">Héroïque · niv 11–16</option>
-        <option value="deadly">Légendaire · niv 17+</option>
-      </select>
-      <div class="diff-track"><div class="diff-fill" id="diff-fill" style="width:45%;background:#d4a040"></div></div>
-    </div>
-
-    <div class="ctrl">
-      <label>Salles <span class="v" id="v-rooms">10</span></label>
-      <input type="range" id="rooms" min="4" max="24" value="10" oninput="document.getElementById('v-rooms').textContent=this.value">
+      <label>Taille
+        <select id="sz">
+          <option value="30">Petit — 30×30</option>
+          <option value="45">Moyen — 45×45</option>
+          <option value="60" selected>Grand — 60×60</option>
+          <option value="80">Épique — 80×80</option>
+          <option value="110">Colossal — 110×110</option>
+        </select>
+      </label>
     </div>
 
     <div class="ctrl">
       <label>Densité couloirs <span class="v" id="v-corr">50%</span></label>
-      <input type="range" id="corr" min="10" max="90" value="50" oninput="document.getElementById('v-corr').textContent=this.value+'%'">
+      <input type="range" id="corr" min="10" max="90" value="50"
+             oninput="updLabel('v-corr',this.value,'%')">
     </div>
 
     <div class="ctrl">
-      <label>Pièges & secrets <span class="v" id="v-trap">30%</span></label>
-      <input type="range" id="trap" min="0" max="80" value="30" oninput="document.getElementById('v-trap').textContent=this.value+'%'">
+      <label>Symétrie
+        <select id="symmetry">
+          <option value="0" selected>Aucune</option>
+          <option value="1">Horizontale</option>
+          <option value="2">Verticale</option>
+          <option value="3">Quadrant</option>
+        </select>
+      </label>
+    </div>
+
+    <div class="sec">Salles</div>
+
+    <div class="ctrl">
+      <label>Taille min <span class="v" id="v-rmin">4</span></label>
+      <input type="range" id="room-min" min="3" max="8" value="4"
+             oninput="updLabel('v-rmin',this.value)">
+    </div>
+
+    <div class="ctrl">
+      <label>Taille max <span class="v" id="v-rmax">auto</span></label>
+      <input type="range" id="room-max" min="0" max="20" value="0"
+             oninput="updLabel('v-rmax',this.value==0?'auto':this.value)">
     </div>
 
     <div class="ctrl">
       <label>Piliers <span class="v" id="v-pillar">15%</span></label>
-      <input type="range" id="pillar" min="0" max="60" value="15" oninput="document.getElementById('v-pillar').textContent=this.value+'%'">
+      <input type="range" id="pillar-p" min="0" max="60" value="15"
+             oninput="updLabel('v-pillar',this.value,'%')">
+    </div>
+
+    <div class="sec">Portes</div>
+
+    <div class="ctrl">
+      <label>Portes normales <span class="v" id="v-door">60%</span></label>
+      <input type="range" id="door-p" min="0" max="100" value="60"
+             oninput="updLabel('v-door',this.value,'%')">
+    </div>
+
+    <div class="ctrl">
+      <label>Portes verrouillées <span class="v" id="v-locked">10%</span></label>
+      <input type="range" id="locked-p" min="0" max="40" value="10"
+             oninput="updLabel('v-locked',this.value,'%')">
+    </div>
+
+    <div class="ctrl">
+      <label>Portes secrètes <span class="v" id="v-secret">8%</span></label>
+      <input type="range" id="secret-p" min="0" max="30" value="8"
+             oninput="updLabel('v-secret',this.value,'%')">
+    </div>
+
+    <div class="sec">Contenu</div>
+
+    <div class="ctrl">
+      <label>Salles piégées <span class="v" id="v-trap">12%</span></label>
+      <input type="range" id="trap-p" min="0" max="50" value="12"
+             oninput="updLabel('v-trap',this.value,'%')">
+    </div>
+
+    <div class="ctrl">
+      <label>Salles secrètes <span class="v" id="v-secroom">8%</span></label>
+      <input type="range" id="secretroom-p" min="0" max="40" value="8"
+             oninput="updLabel('v-secroom',this.value,'%')">
     </div>
 
     <div class="tog-row">
       <span>Salles d'eau</span>
       <label class="tog"><input type="checkbox" id="water"><div class="tog-track"></div><div class="tog-knob"></div></label>
     </div>
+
     <div class="tog-row">
-      <span>Mode MJ (pièges visibles)</span>
+      <span>Lave (boss / spéciale)</span>
+      <label class="tog"><input type="checkbox" id="lava"><div class="tog-track"></div><div class="tog-knob"></div></label>
+    </div>
+
+    <div class="tog-row">
+      <span>Mode MJ (secrets visibles)</span>
       <label class="tog"><input type="checkbox" id="mj-mode" checked><div class="tog-track"></div><div class="tog-knob"></div></label>
     </div>
 
     <div class="sep-rune"><span>⬡</span></div>
 
-    <button class="btn btn-primary btn-full" onclick="generate()" style="margin-bottom:6px">
-      ⚒ Forger le donjon <span class="kbd">␣</span>
-    </button>
     <div class="btn-row">
-      <button class="btn" id="btn-grid" onclick="toggleGrid()">Grille</button>
-      <button class="btn active" id="btn-num" onclick="toggleNums()">N°</button>
-      <button class="btn" onclick="resetView()" title="Reset vue">⌂</button>
+      <button class="btn active" id="btn-num"  onclick="toggleNums()">N°</button>
+      <button class="btn"        id="btn-grid" onclick="toggleGrid()">Grille</button>
+      <button class="btn"        onclick="resetView()">⌂ Reset</button>
     </div>
 
-    <div class="sep-rune" style="margin-top:1rem"><span>Historique</span></div>
+    <div class="sep-rune" style="margin-top:.9rem"><span>Historique</span></div>
     <div id="hist"></div>
+
   </aside>
 
   <!-- ── MAP ── -->
@@ -118,7 +151,7 @@
       <button class="mb" onclick="zoomIn()">+</button>
       <button class="mb" onclick="zoomOut()">−</button>
       <div class="zoom-pct" id="zoom-lbl">100%</div>
-      <button class="mb" onclick="resetView()" style="margin-top:2px" title="Reset">⌂</button>
+      <button class="mb" onclick="resetView()" style="margin-top:2px">⌂</button>
     </div>
 
     <div class="mm-wrap" id="mm-wrap">
@@ -127,7 +160,7 @@
 
     <div class="statbar">
       <div class="si"><div class="sd" style="background:#4a4a7a"></div><span class="sl">Salles</span><span class="sv" id="st-r">—</span></div>
-      <div class="si"><div class="sd" style="background:#c94040"></div><span class="sl">Boss</span><span class="sv" id="st-b">—</span></div>
+      <div class="si"><div class="sd" style="background:#c04040"></div><span class="sl">Boss</span><span class="sv" id="st-b">—</span></div>
       <div class="si"><div class="sd" style="background:#3d6b3d"></div><span class="sl">Spéc</span><span class="sv" id="st-s">—</span></div>
       <div class="si"><div class="sd" style="background:#8a3a3a"></div><span class="sl">Pièges</span><span class="sv" id="st-t">—</span></div>
       <div class="si"><div class="sd" style="background:#5a3a8a"></div><span class="sl">Secrets</span><span class="sv" id="st-sc">—</span></div>
@@ -137,51 +170,57 @@
 
     <div class="placeholder" id="ph">
       <div class="ph-icon">⚒</div>
-      <div class="ph-txt">Forge ton premier donjon</div>
-      <div class="ph-sub">Configure à gauche, puis <strong style="color:var(--gold3)">⚒ Forger</strong></div>
+      <div class="ph-txt">Génération en cours…</div>
     </div>
   </div>
 
   <!-- ── RIGHT SIDEBAR ── -->
   <aside class="sidebar-right">
+
     <div class="sec">Salle sélectionnée</div>
-    <div class="rpanel" id="rpanel"><div class="r-empty">Clique sur une salle</div></div>
+    <div class="rpanel" id="rpanel">
+      <div class="r-empty">Clique sur une salle</div>
+    </div>
 
     <div class="sep-rune"><span>⬡</span></div>
     <div class="sec">Export</div>
     <div class="btn-row" style="flex-direction:column;gap:5px">
       <button class="btn btn-primary btn-full" onclick="exportPNG(1)">🖼 PNG normal</button>
-      <button class="btn btn-full" onclick="exportPNG(2)">🖼 PNG ×2 HD</button>
-      <button class="btn btn-full" onclick="exportPNG(4)">🖼 PNG ×4 4K</button>
-      <button class="btn btn-full" onclick="exportTXT()">📄 Fiche MJ .txt</button>
-      <button class="btn btn-full" onclick="exportJSON()">{ } JSON sauvegarde</button>
-      <button class="btn btn-full" onclick="copyDiscord()">💬 Copier résumé Discord</button>
+      <button class="btn btn-full"             onclick="exportPNG(2)">🖼 PNG ×2 HD</button>
+      <button class="btn btn-full"             onclick="exportPNG(4)">🖼 PNG ×4 4K</button>
+      <button class="btn btn-full"             onclick="exportTXT()">📄 Fiche MJ .txt</button>
+      <button class="btn btn-full"             onclick="exportJSON()">{ } JSON</button>
+      <button class="btn btn-full"             onclick="copyDiscord()">💬 Copier Discord</button>
     </div>
 
     <div class="sep-rune" style="margin-top:.8rem"><span>⬡</span></div>
     <div class="sec">Légende</div>
-    <div class="leg-item"><div class="leg-swatch" style="background:#3a2e08;border:1px solid rgba(240,192,96,.45)"></div>Entrée</div>
-    <div class="leg-item"><div class="leg-swatch" style="background:#2a0808;border:1px solid rgba(200,60,60,.45)"></div>Boss / Trésor</div>
-    <div class="leg-item"><div class="leg-swatch" style="background:#0f2010;border:1px solid rgba(80,160,80,.45)"></div>Spéciale</div>
-    <div class="leg-item"><div class="leg-swatch" style="background:#180a30;border:1px solid rgba(160,80,220,.45)"></div>Passage secret</div>
-    <div class="leg-item"><div class="leg-swatch" style="background:#200808;border:1px solid rgba(200,80,40,.45)"></div>Piège</div>
+    <div class="leg-item"><div class="leg-swatch" style="background:#3a2e08;border:1px solid rgba(225,175,75,.5)"></div>Entrée</div>
+    <div class="leg-item"><div class="leg-swatch" style="background:#2a0808;border:1px solid rgba(200,50,50,.5)"></div>Boss / Trésor</div>
+    <div class="leg-item"><div class="leg-swatch" style="background:#0f2010;border:1px solid rgba(55,155,55,.5)"></div>Spéciale</div>
+    <div class="leg-item"><div class="leg-swatch" style="background:#180a30;border:1px solid rgba(130,55,205,.5)"></div>Passage secret</div>
+    <div class="leg-item"><div class="leg-swatch" style="background:#200808;border:1px solid rgba(185,55,28,.5)"></div>Piège</div>
     <div style="height:1px;background:var(--border);margin:5px 0"></div>
-    <div class="leg-item"><span style="font-size:.85rem;width:11px;text-align:center">▼</span>Escalier descendant</div>
-    <div class="leg-item"><span style="font-size:.85rem;width:11px;text-align:center">▲</span>Escalier montant</div>
-    <div class="leg-item"><span style="font-size:.85rem;width:11px;text-align:center">◈</span>Coffre au trésor</div>
-    <div class="leg-item"><span style="font-size:.85rem;width:11px;text-align:center">✦</span>Autel / Sanctuaire</div>
-    <div class="leg-item"><span style="font-size:.85rem;width:11px;text-align:center">●</span>Pilier</div>
-    <div class="leg-item" style="font-style:italic;color:var(--textm)"><span style="width:11px;text-align:center;display:inline-block">✕</span>Piège (mode MJ)</div>
+    <div class="leg-item"><span class="leg-ic">🚪</span>Porte normale</div>
+    <div class="leg-item"><span class="leg-ic">🔒</span>Porte verrouillée</div>
+    <div class="leg-item"><span class="leg-ic" style="color:#b080e0">?</span>Porte secrète (mode MJ)</div>
+    <div class="leg-item"><span class="leg-ic">▼</span>Escalier descendant</div>
+    <div class="leg-item"><span class="leg-ic">▲</span>Escalier montant</div>
+    <div class="leg-item"><span class="leg-ic">◈</span>Coffre</div>
+    <div class="leg-item"><span class="leg-ic">✦</span>Autel</div>
+    <div class="leg-item"><span class="leg-ic">●</span>Pilier</div>
+    <div class="leg-item"><span class="leg-ic">✕</span>Piège (mode MJ)</div>
 
     <div class="sep-rune" style="margin-top:.8rem"><span>⬡</span></div>
     <div class="sec">Raccourcis</div>
     <div style="display:flex;flex-direction:column;gap:3px">
-      <div style="font-family:'Crimson Pro',serif;font-size:.82rem;color:var(--textd)"><span class="kbd">Espace</span> Régénérer</div>
-      <div style="font-family:'Crimson Pro',serif;font-size:.82rem;color:var(--textd)"><span class="kbd">+</span><span class="kbd">−</span> Zoom</div>
-      <div style="font-family:'Crimson Pro',serif;font-size:.82rem;color:var(--textd)"><span class="kbd">R</span> Reset vue</div>
-      <div style="font-family:'Crimson Pro',serif;font-size:.82rem;color:var(--textd)"><span class="kbd">G</span> Grille</div>
-      <div style="font-family:'Crimson Pro',serif;font-size:.82rem;color:var(--textd)">Molette = zoom · Drag = pan</div>
+      <div class="shortcut"><span class="kbd">Espace</span> Nouveau seed</div>
+      <div class="shortcut"><span class="kbd">+</span><span class="kbd">−</span> Zoom</div>
+      <div class="shortcut"><span class="kbd">R</span> Reset vue</div>
+      <div class="shortcut"><span class="kbd">G</span> Grille</div>
+      <div class="shortcut">Molette = zoom · Drag = pan</div>
     </div>
+
   </aside>
 </div>
 
