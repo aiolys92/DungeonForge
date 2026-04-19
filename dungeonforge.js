@@ -325,6 +325,29 @@ function populateRooms(rooms, rng, opts){
   });
 }
 
+// ── Place a door at every corridor-to-room junction ──
+// Called after all generation so it works for all algos.
+function placeDoorsBetweenRooms(g, W, H, rng, opts){
+  const DOOR_TILES = new Set([T.DOOR,T.DOOR_LOCKED,T.DOOR_SECRET]);
+  for(let y=1;y<H-1;y++) for(let x=1;x<W-1;x++){
+    const t=g[y][x];
+    // Only act on plain corridor tiles (don't overwrite already-placed doors)
+    if(t!==T.CORRIDOR) continue;
+    // Check if adjacent to a room floor tile
+    const adj=[[0,-1],[0,1],[-1,0],[1,0]];
+    const nextToFloor=adj.some(([dx,dy])=>{
+      const nx=x+dx,ny=y+dy;
+      return nx>=0&&ny>=0&&nx<W&&ny<H && g[ny][nx]===T.FLOOR;
+    });
+    if(!nextToFloor) continue;
+    // Place door — type determined by sliders
+    const r=rng();
+    if(r<opts.secretDoorP)                        g[y][x]=T.DOOR_SECRET;
+    else if(r<opts.secretDoorP+opts.lockedDoorP)  g[y][x]=T.DOOR_LOCKED;
+    else                                           g[y][x]=T.DOOR;
+  }
+}
+
 // ══════════════════════════════════════════════════════════
 // MASTER GENERATE
 // ══════════════════════════════════════════════════════════
@@ -370,6 +393,8 @@ function generateDungeon(cfg){
   assignTypes(rooms, rng, opts);
   addSpecialTiles(g, rooms, rng, opts);
   populateRooms(rooms, rng, opts);
+  // ── Ensure a door at every corridor-to-room junction ──
+  placeDoorsBetweenRooms(g, finalW, finalH, rng, opts);
 
   return {grid:g, rooms, W:finalW, H:finalH, algo, seed, config:cfg, ts:Date.now()};
 }
@@ -789,6 +814,13 @@ let currentAlgo='bsp';
 let currentSeed=newSeed();
 let autoGenTimer=null;
 
+// ── Editor state ──
+let editMode   = false;
+let editTool   = 'floor';       // active tool
+let editDown   = false;         // mouse held while drawing
+let editStart  = null;          // {gx,gy} for room-draw drag
+let editPreview= null;          // {x,y,w,h} room preview while dragging
+
 function newSeed(){ return Math.floor(Math.random()*999999)+10000; }
 
 // ══════════════════════════════════════════════════════════
@@ -904,6 +936,16 @@ function renderAll(){
   canvas.width=cs*W; canvas.height=cs*H;
   canvas.style.transform=`translate(${panX}px,${panY}px) scale(${zoom})`;
   renderDungeon(ctx,dungeon,cs,selId,showGrid,showNums,showSecrets);
+  // Room-draw preview
+  if(editMode && editPreview && editTool==='room'){
+    const {x,y,w,h}=editPreview;
+    ctx.fillStyle='rgba(50,180,50,.2)';
+    ctx.fillRect(x*cs,y*cs,w*cs,h*cs);
+    ctx.strokeStyle='rgba(50,200,50,.8)'; ctx.lineWidth=2;
+    ctx.setLineDash([4,3]);
+    ctx.strokeRect(x*cs,y*cs,w*cs,h*cs);
+    ctx.setLineDash([]);
+  }
   updMinimap();
   document.getElementById('zoom-lbl').textContent=Math.round(zoom*100)+'%';
 }
@@ -921,9 +963,63 @@ function updMinimap(){
 // PAN & ZOOM
 // ══════════════════════════════════════════════════════════
 const mapWrap=document.getElementById('map-wrap');
-mapWrap.addEventListener('mousedown',e=>{if(e.target.tagName==='BUTTON')return;isPanning=true;lastPX=e.clientX;lastPY=e.clientY;});
-window.addEventListener('mousemove',e=>{if(!isPanning)return;panX+=e.clientX-lastPX;panY+=e.clientY-lastPY;lastPX=e.clientX;lastPY=e.clientY;clampPan();applyT();});
-window.addEventListener('mouseup',()=>isPanning=false);
+
+function screenToGrid(clientX, clientY){
+  const rect=mapWrap.getBoundingClientRect();
+  return [
+    Math.floor((clientX-rect.left-panX)/zoom/cs),
+    Math.floor((clientY-rect.top -panY)/zoom/cs)
+  ];
+}
+
+mapWrap.addEventListener('mousedown',e=>{
+  if(e.target.tagName==='BUTTON') return;
+  if(editMode && e.button===0){
+    editDown=true;
+    const [gx,gy]=screenToGrid(e.clientX,e.clientY);
+    if(editTool==='room'){
+      editStart={gx,gy}; editPreview={x:gx,y:gy,w:1,h:1};
+    } else {
+      applyEditTool(gx,gy);
+    }
+    return;
+  }
+  isPanning=true; lastPX=e.clientX; lastPY=e.clientY;
+});
+
+window.addEventListener('mousemove',e=>{
+  if(editMode && editDown && e.buttons===1){
+    const [gx,gy]=screenToGrid(e.clientX,e.clientY);
+    if(editTool==='room' && editStart){
+      editPreview={
+        x:Math.min(editStart.gx,gx), y:Math.min(editStart.gy,gy),
+        w:Math.abs(gx-editStart.gx)+1, h:Math.abs(gy-editStart.gy)+1
+      };
+      renderAll();
+    } else {
+      applyEditTool(gx,gy);
+    }
+    return;
+  }
+  if(!isPanning) return;
+  panX+=e.clientX-lastPX; panY+=e.clientY-lastPY;
+  lastPX=e.clientX; lastPY=e.clientY;
+  clampPan(); applyT();
+});
+
+window.addEventListener('mouseup',e=>{
+  if(editMode && editDown){
+    editDown=false;
+    if(editTool==='room' && editPreview && editStart){
+      finalizeRoom(editPreview);
+      editPreview=null; editStart=null;
+    }
+    return;
+  }
+  isPanning=false;
+});
+
+mapWrap.addEventListener('contextmenu',e=>e.preventDefault());
 mapWrap.addEventListener('wheel',e=>{e.preventDefault();zoom=Math.max(.2,Math.min(10,zoom*(e.deltaY>0?.88:1.14)));clampPan();applyT();},{passive:false});
 
 function applyT(){
@@ -941,13 +1037,75 @@ function zoomOut(){ zoom=Math.max(.2,zoom/1.25);  clampPan(); applyT(); }
 function resetView(){ zoom=1; panX=0; panY=0; applyT(); renderAll(); }
 
 // ══════════════════════════════════════════════════════════
+// EDITOR
+// ══════════════════════════════════════════════════════════
+function toggleEditMode(){
+  editMode=!editMode;
+  document.getElementById('edit-toolbar').style.display = editMode?'flex':'none';
+  document.getElementById('btn-edit').classList.toggle('active',editMode);
+  mapWrap.style.cursor = editMode?'crosshair':'grab';
+  if(!editMode){ editDown=false; editPreview=null; renderAll(); }
+  toast(editMode?'✏ Mode édition — clique/glisse sur la carte':'Navigation restaurée');
+}
+
+function setEditTool(tool, el){
+  editTool=tool;
+  document.querySelectorAll('.etool').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active');
+}
+
+function applyEditTool(gx,gy){
+  if(!dungeon) return;
+  const g=dungeon.grid, W=dungeon.W, H=dungeon.H;
+  if(gx<0||gy<0||gx>=W||gy>=H) return;
+  switch(editTool){
+    case 'floor':       g[gy][gx]=T.FLOOR;       break;
+    case 'corridor':    g[gy][gx]=T.CORRIDOR;     break;
+    case 'wall':        g[gy][gx]=T.WALL;         break;
+    case 'door':        g[gy][gx]=T.DOOR;         break;
+    case 'door_locked': g[gy][gx]=T.DOOR_LOCKED;  break;
+    case 'door_secret': g[gy][gx]=T.DOOR_SECRET;  break;
+    case 'del_room':    deleteRoomAt(gx,gy); return;
+    case 'pillar':      if(g[gy][gx]!==T.WALL) g[gy][gx]=T.PILLAR; break;
+    case 'stairs_up':   if(g[gy][gx]!==T.WALL) g[gy][gx]=T.STAIRS_UP; break;
+    case 'stairs_down': if(g[gy][gx]!==T.WALL) g[gy][gx]=T.STAIRS_DOWN; break;
+  }
+  saveDungeon(dungeon); renderAll();
+}
+
+function finalizeRoom(preview){
+  if(!dungeon) return;
+  const {x,y,w,h}=preview;
+  const g=dungeon.grid, W=dungeon.W, H=dungeon.H;
+  if(w<2||h<2||x<1||y<1||x+w>W-1||y+h>H-1){ toast('Salle trop petite ou hors limites'); return; }
+  for(let ry=y;ry<y+h;ry++) for(let rx=x;rx<x+w;rx++) g[ry][rx]=T.FLOOR;
+  const newId=dungeon.rooms.length ? Math.max(...dungeon.rooms.map(r=>r.id))+1 : 1;
+  const r={id:newId,x,y,w,h,cx:x+Math.floor(w/2),cy:y+Math.floor(h/2),type:'normal',notes:'',monsters:[],traps:[],secrets:[],treasure:[]};
+  dungeon.rooms.push(r);
+  selId=r.id; showRoomPanel(r);
+  saveDungeon(dungeon); updStats(); renderAll();
+  toast(`Salle ${newId} créée (${w}×${h})`);
+}
+
+function deleteRoomAt(gx,gy){
+  if(!dungeon) return;
+  const r=dungeon.rooms.find(r=>gx>=r.x&&gx<r.x+r.w&&gy>=r.y&&gy<r.y+r.h);
+  if(!r){ toast('Aucune salle ici'); return; }
+  const g=dungeon.grid;
+  for(let y=r.y;y<r.y+r.h;y++) for(let x=r.x;x<r.x+r.w;x++) g[y][x]=T.WALL;
+  dungeon.rooms=dungeon.rooms.filter(rm=>rm.id!==r.id);
+  if(selId===r.id){ selId=null; document.getElementById('rpanel').innerHTML='<div class="r-empty">Clique sur une salle</div>'; }
+  saveDungeon(dungeon); updStats(); renderAll();
+  toast(`Salle [${r.id}] ${r.name} supprimée`);
+}
+
+// ══════════════════════════════════════════════════════════
 // ROOM CLICK & PANEL
 // ══════════════════════════════════════════════════════════
 mapWrap.addEventListener('click',e=>{
+  if(editMode) return; // editor handles its own interactions
   if(!dungeon||Math.abs(e.movementX)+Math.abs(e.movementY)>4||e.target.tagName==='BUTTON') return;
-  const rect=mapWrap.getBoundingClientRect();
-  const mx=(e.clientX-rect.left-panX)/zoom, my=(e.clientY-rect.top-panY)/zoom;
-  const gx=Math.floor(mx/cs), gy=Math.floor(my/cs);
+  const [gx,gy]=screenToGrid(e.clientX,e.clientY);
   for(const r of dungeon.rooms){
     if(gx>=r.x&&gx<r.x+r.w&&gy>=r.y&&gy<r.y+r.h){
       selId=r.id; showRoomPanel(r); renderAll(); return;

@@ -137,6 +137,9 @@
       <button class="btn"        id="btn-grid" onclick="toggleGrid()">Grille</button>
       <button class="btn"        onclick="resetView()">⌂ Reset</button>
     </div>
+    <div class="btn-row" style="margin-top:5px">
+      <button class="btn btn-primary btn-full" id="btn-edit" onclick="toggleEditMode()">✏ Mode Édition</button>
+    </div>
 
     <div class="sep-rune" style="margin-top:.9rem"><span>Historique</span></div>
     <div id="hist"></div>
@@ -152,6 +155,30 @@
       <button class="mb" onclick="zoomOut()">−</button>
       <div class="zoom-pct" id="zoom-lbl">100%</div>
       <button class="mb" onclick="resetView()" style="margin-top:2px">⌂</button>
+    </div>
+
+    <!-- Edit toolbar — hidden until edit mode activated -->
+    <div class="edit-toolbar" id="edit-toolbar" style="display:none">
+      <span class="etool-lbl">Dessiner</span>
+      <button class="mb etool active" data-tool="floor"       onclick="setEditTool('floor',this)"       title="Sol (cliquer/glisser)">▦</button>
+      <button class="mb etool"        data-tool="corridor"    onclick="setEditTool('corridor',this)"    title="Couloir">╌</button>
+      <button class="mb etool"        data-tool="wall"        onclick="setEditTool('wall',this)"        title="Mur (effacer)">■</button>
+      <div class="etool-sep"></div>
+      <span class="etool-lbl">Portes</span>
+      <button class="mb etool"        data-tool="door"        onclick="setEditTool('door',this)"        title="Porte normale">🚪</button>
+      <button class="mb etool"        data-tool="door_locked" onclick="setEditTool('door_locked',this)" title="Porte verrouillée">🔒</button>
+      <button class="mb etool"        data-tool="door_secret" onclick="setEditTool('door_secret',this)" title="Porte secrète" style="font-family:'Cinzel',serif;font-size:.65rem">S</button>
+      <div class="etool-sep"></div>
+      <span class="etool-lbl">Décor</span>
+      <button class="mb etool"        data-tool="pillar"      onclick="setEditTool('pillar',this)"      title="Pilier">●</button>
+      <button class="mb etool"        data-tool="stairs_up"   onclick="setEditTool('stairs_up',this)"   title="Escalier montant">↑</button>
+      <button class="mb etool"        data-tool="stairs_down" onclick="setEditTool('stairs_down',this)" title="Escalier descendant">↓</button>
+      <div class="etool-sep"></div>
+      <span class="etool-lbl">Salles</span>
+      <button class="mb etool"        data-tool="room"        onclick="setEditTool('room',this)"        title="Nouvelle salle (glisser pour dessiner)">⬜</button>
+      <button class="mb etool"        data-tool="del_room"    onclick="setEditTool('del_room',this)"    title="Supprimer salle" style="color:#c04040">✕</button>
+      <div class="etool-sep"></div>
+      <button class="mb" onclick="toggleEditMode()" style="color:#5a8a3a;font-size:.7rem;width:auto;padding:0 8px" title="Terminer l'édition">✓ Fin</button>
     </div>
 
     <div class="mm-wrap" id="mm-wrap">

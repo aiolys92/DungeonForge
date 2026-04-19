@@ -131,3 +131,24 @@ input[type=text]:focus,input[type=number]:focus{border-color:var(--borderb)}
 .leg-ic{width:14px;text-align:center;display:inline-block;font-size:.88rem;flex-shrink:0}
 /* Shortcut row */
 .shortcut{font-family:'Crimson Pro',serif;font-size:.82rem;color:var(--textd)}
+
+/* ── Edit toolbar ── */
+.edit-toolbar{
+  position:absolute;top:10px;left:50%;transform:translateX(-50%);
+  z-index:25;
+  background:rgba(7,5,12,.96);
+  border:1px solid var(--borderb);
+  border-radius:var(--rl);
+  padding:5px 10px;
+  display:flex;align-items:center;gap:4px;
+  flex-wrap:wrap;
+  max-width:calc(100% - 80px);
+  box-shadow:0 4px 20px rgba(0,0,0,.5);
+}
+.etool-lbl{
+  font-family:'Cinzel',serif;font-size:.56rem;letter-spacing:.12em;
+  color:var(--gold3);text-transform:uppercase;white-space:nowrap;
+  padding:0 2px;
+}
+.etool-sep{width:1px;height:22px;background:var(--border);margin:0 2px;flex-shrink:0}
+.etool.active{border-color:var(--ember)!important;color:var(--ember)!important;background:rgba(232,133,58,.1)!important}
