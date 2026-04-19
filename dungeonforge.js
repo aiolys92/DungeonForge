@@ -384,142 +384,375 @@ function applySymmetry(g, W, H, mode){
 }
 
 // ══════════════════════════════════════════════════════════
-// RENDERER
+// RENDERER — Classic JDR cartography style
 // ══════════════════════════════════════════════════════════
 const PALETTE = {
-  bg:'#040208', wall:'#0d0b14', floor:'#1c1a2c', corr:'#14122a',
-  water:'#0e2030', lava:'#300e04'
+  bg:      '#c8c0a8',  // outer hatched rock
+  wall:    '#bab2a0',  // wall fill (hatching drawn over)
+  floor:   '#f4f0e4',  // room floor cream
+  corr:    '#ece8dc',  // corridor floor
+  outline: '#1a1614',  // thick black outlines
+  hatch:   'rgba(38,28,18,.3)',
+  grid:    'rgba(0,0,0,.065)',
+  water:   '#c4dce8',
+  lava:    '#e8b080',
 };
+
+// Build a reusable diagonal-hatch OffscreenCanvas pattern
+let _hatchPattern = null;
+function getHatchPattern(ctx){
+  if(_hatchPattern) return _hatchPattern;
+  const sz = 8;
+  const off = document.createElement('canvas');
+  off.width = sz; off.height = sz;
+  const c = off.getContext('2d');
+  c.strokeStyle = PALETTE.hatch;
+  c.lineWidth = 1;
+  // Two diagonal directions for cross-hatch
+  c.beginPath(); c.moveTo(0,sz); c.lineTo(sz,0); c.stroke();
+  c.beginPath(); c.moveTo(-1,1); c.lineTo(1,-1); c.stroke();
+  c.beginPath(); c.moveTo(sz-1,sz+1); c.lineTo(sz+1,sz-1); c.stroke();
+  _hatchPattern = ctx.createPattern(off, 'repeat');
+  return _hatchPattern;
+}
 
 function renderDungeon(ctx, dungeon, cs, selId, showGrid, showNums, showSecrets){
   const {grid:g, rooms, W, H} = dungeon;
-  const cw=W*cs, ch=H*cs;
+  const cw = W*cs, ch = H*cs;
 
-  ctx.fillStyle=PALETTE.bg; ctx.fillRect(0,0,cw,ch);
+  // ── 1. Fill everything as hatched wall ──
+  ctx.fillStyle = PALETTE.wall;
+  ctx.fillRect(0, 0, cw, ch);
+  ctx.fillStyle = getHatchPattern(ctx);
+  ctx.fillRect(0, 0, cw, ch);
 
-  // Base tiles
+  // ── 2. Paint floor tiles (erase wall with floor color) ──
   for(let y=0;y<H;y++) for(let x=0;x<W;x++){
-    const t=g[y][x]; if(t===T.WALL) continue;
-    const c = t===T.CORRIDOR?PALETTE.corr : t===T.WATER?PALETTE.water : t===T.LAVA?PALETTE.lava : PALETTE.floor;
-    ctx.fillStyle=c; ctx.fillRect(x*cs,y*cs,cs,cs);
-    if(cs>6&&(t===T.FLOOR||t===T.CORRIDOR)){ctx.fillStyle='rgba(255,255,255,.022)';ctx.fillRect(x*cs+1,y*cs+1,cs-2,cs-2);}
+    const t = g[y][x];
+    if(t === T.WALL) continue;
+    if(t === T.WATER){ ctx.fillStyle=PALETTE.water; ctx.fillRect(x*cs,y*cs,cs,cs); continue; }
+    if(t === T.LAVA) { ctx.fillStyle=PALETTE.lava;  ctx.fillRect(x*cs,y*cs,cs,cs); continue; }
+    ctx.fillStyle = (t===T.CORRIDOR) ? PALETTE.corr : PALETTE.floor;
+    ctx.fillRect(x*cs, y*cs, cs, cs);
   }
 
-  // Wall face shading
-  for(let y=0;y<H-1;y++) for(let x=0;x<W;x++){
-    if(g[y][x]!==T.WALL&&g[y+1]?.[x]===T.WALL){ctx.fillStyle='rgba(0,0,0,.32)';ctx.fillRect(x*cs,(y+1)*cs,cs,Math.min(3,cs*.25));}
+  // ── 3. Floor grid lines (always on) ──
+  ctx.strokeStyle = PALETTE.grid;
+  ctx.lineWidth = .5;
+  for(let y=0;y<H;y++) for(let x=0;x<W;x++){
+    const t=g[y][x]; if(t===T.WALL||t===T.WATER||t===T.LAVA) continue;
+    ctx.strokeRect(x*cs+.5, y*cs+.5, cs-1, cs-1);
   }
 
-  // Special tiles
-  if(cs>=8){
-    ctx.textAlign='center'; ctx.textBaseline='middle';
+  // ── 4. Thick black outlines around floor/wall borders ──
+  ctx.strokeStyle = PALETTE.outline;
+  ctx.lineWidth   = Math.max(1.5, cs * .12);
+  ctx.lineCap     = 'square';
+  const lw = ctx.lineWidth;
+  const DIRS = [[0,-1,'top'],[0,1,'bot'],[-1,0,'lft'],[1,0,'rgt']];
+  for(let y=0;y<H;y++) for(let x=0;x<W;x++){
+    const t = g[y][x]; if(t===T.WALL) continue;
+    for(const [dx,dy,side] of DIRS){
+      const nx=x+dx, ny=y+dy;
+      const nb = (nx<0||ny<0||nx>=W||ny>=H) ? T.WALL : g[ny][nx];
+      if(nb !== T.WALL) continue;
+      ctx.beginPath();
+      const px=x*cs, py=y*cs;
+      if(side==='top')  { ctx.moveTo(px,       py+lw/2); ctx.lineTo(px+cs,    py+lw/2); }
+      if(side==='bot')  { ctx.moveTo(px,       py+cs-lw/2); ctx.lineTo(px+cs, py+cs-lw/2); }
+      if(side==='lft')  { ctx.moveTo(px+lw/2,  py);      ctx.lineTo(px+lw/2,  py+cs); }
+      if(side==='rgt')  { ctx.moveTo(px+cs-lw/2,py);     ctx.lineTo(px+cs-lw/2,py+cs); }
+      ctx.stroke();
+    }
+  }
+  ctx.lineCap = 'butt';
+
+  // ── 5. Special tiles (doors, pillars, stairs…) ──
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  for(let y=0;y<H;y++) for(let x=0;x<W;x++){
+    const t=g[y][x];
+    if(t===T.WALL||t===T.FLOOR||t===T.CORRIDOR||t===T.WATER||t===T.LAVA) continue;
+    const px=x*cs, py=y*cs, cx2=px+cs/2, cy2=py+cs/2;
+    const fs=Math.max(7,Math.min(cs*.65,14));
+    drawTile(ctx,t,px,py,cx2,cy2,cs,fs,showSecrets,g,x,y);
+  }
+
+  // ── 6. Water wave lines ──
+  if(cs >= 8){
+    ctx.strokeStyle='rgba(50,100,160,.5)'; ctx.lineWidth=.8;
     for(let y=0;y<H;y++) for(let x=0;x<W;x++){
-      const t=g[y][x]; if(t===T.WALL||t===T.FLOOR||t===T.CORRIDOR) continue;
-      const cx=x*cs+cs/2, cy=y*cs+cs/2, fs=Math.max(7,Math.min(cs*.65,14));
-      drawTile(ctx,t,x*cs,y*cs,cx,cy,cs,fs,showSecrets);
+      if(g[y][x]!==T.WATER) continue;
+      const px=x*cs,py=y*cs;
+      for(let i=0;i<3;i++){
+        const wy=py+cs*(0.3+i*0.2);
+        ctx.beginPath(); ctx.moveTo(px+cs*.1,wy);
+        ctx.bezierCurveTo(px+cs*.35,wy-cs*.06,px+cs*.65,wy+cs*.06,px+cs*.9,wy);
+        ctx.stroke();
+      }
     }
   }
 
-  // Room overlays
-  const RC={
-    entry:  {f:'rgba(150,105,10,.17)', b:'rgba(225,175,75,.65)',  ic:'🚪'},
-    boss:   {f:'rgba(135,10,10,.2)',   b:'rgba(205,48,48,.65)',   ic:'💀'},
-    special:{f:'rgba(10,85,10,.17)',   b:'rgba(55,155,55,.55)',   ic:'⭐'},
-    secret: {f:'rgba(65,10,125,.19)',  b:'rgba(130,55,205,.55)',  ic:'🔮'},
-    trap:   {f:'rgba(125,28,8,.19)',   b:'rgba(185,55,28,.55)',   ic:'⚠️'},
-    normal: {f:'rgba(45,42,85,.1)',    b:'rgba(72,65,125,.3)',    ic:null}
+  // ── 7. Lava stipple ──
+  for(let y=0;y<H;y++) for(let x=0;x<W;x++){
+    if(g[y][x]!==T.LAVA) continue;
+    ctx.fillStyle='rgba(180,60,10,.35)';
+    for(let i=0;i<5;i++){
+      const sx=x*cs+cs*(0.15+Math.sin(x*7+y*3+i)*0.35+0.35);
+      const sy=y*cs+cs*(0.15+Math.cos(x*5+y*7+i)*0.35+0.35);
+      const r=Math.max(1,cs*.06);
+      ctx.beginPath(); ctx.arc(sx,sy,r,0,Math.PI*2); ctx.fill();
+    }
+  }
+
+  // ── 8. Room type tint + selection + labels ──
+  const TINTS = {
+    entry:  'rgba(200,160,20,.12)',
+    boss:   'rgba(180,20,20,.14)',
+    special:'rgba(20,120,20,.1)',
+    secret: 'rgba(100,20,180,.12)',
+    trap:   'rgba(180,60,10,.12)',
+    normal: null
   };
+  const SEL_COLORS = {
+    entry:'#c09020', boss:'#c02020', special:'#208020',
+    secret:'#8020c0', trap:'#c04010', normal:'#404080'
+  };
+
   ctx.textAlign='center'; ctx.textBaseline='middle';
   for(const r of rooms){
-    const tc=RC[r.type]||RC.normal;
-    ctx.fillStyle=tc.f; ctx.fillRect(r.x*cs,r.y*cs,r.w*cs,r.h*cs);
+    // Tint
+    const tint = TINTS[r.type];
+    if(tint){ ctx.fillStyle=tint; ctx.fillRect(r.x*cs,r.y*cs,r.w*cs,r.h*cs); }
+
+    // Selection highlight
     if(selId===r.id){
-      ctx.fillStyle='rgba(255,205,65,.1)'; ctx.fillRect(r.x*cs,r.y*cs,r.w*cs,r.h*cs);
-      ctx.strokeStyle='rgba(255,205,65,.78)'; ctx.lineWidth=2.5;
-      ctx.strokeRect(r.x*cs+1,r.y*cs+1,r.w*cs-2,r.h*cs-2);
-    } else {
-      ctx.strokeStyle=tc.b; ctx.lineWidth=1;
-      ctx.strokeRect(r.x*cs+.5,r.y*cs+.5,r.w*cs-1,r.h*cs-1);
+      ctx.strokeStyle='rgba(220,160,0,.85)'; ctx.lineWidth=Math.max(2,cs*.15);
+      ctx.setLineDash([Math.max(3,cs*.25),Math.max(2,cs*.15)]);
+      ctx.strokeRect(r.x*cs+ctx.lineWidth/2+1,r.y*cs+ctx.lineWidth/2+1,r.w*cs-ctx.lineWidth-2,r.h*cs-ctx.lineWidth-2);
+      ctx.setLineDash([]);
     }
-    if(r.w*cs<14||r.h*cs<14) continue;
-    const cx=r.cx*cs+cs/2, cy=r.cy*cs+cs/2;
-    const fs=Math.max(8,Math.min(cs*.75,13));
-    const hasIco=tc.ic&&r.w*cs>24&&r.h*cs>24;
-    if(hasIco){ctx.font=`${fs*1.1}px serif`;ctx.fillText(tc.ic,cx,cy-(showNums?fs*.5:0));}
-    if(showNums){ctx.font=`bold ${fs}px Cinzel,serif`;ctx.fillStyle='rgba(210,190,155,.9)';ctx.fillText(r.id,cx,cy+(hasIco?fs*.5:0));}
+
+    if(r.w*cs < 16 || r.h*cs < 16) continue;
+    const rcx = r.cx*cs+cs/2, rcy = r.cy*cs+cs/2;
+    const col = SEL_COLORS[r.type]||'#303060';
+
+    // Room number
+    if(showNums){
+      const nfs = Math.max(7, Math.min(cs*.7, 12));
+      ctx.font = `bold ${nfs}px Cinzel,serif`;
+      // White knockout
+      ctx.fillStyle='rgba(255,255,255,.7)';
+      ctx.fillText(r.id, rcx+.5, rcy+.5);
+      ctx.fillStyle = col;
+      ctx.fillText(r.id, rcx, rcy);
+    }
   }
 
+  // ── 9. Manual grid overlay toggle ──
   if(showGrid){
-    ctx.strokeStyle='rgba(255,255,255,.038)'; ctx.lineWidth=.5;
+    ctx.strokeStyle='rgba(0,0,0,.12)'; ctx.lineWidth=.5;
     for(let i=0;i<=W;i++){ctx.beginPath();ctx.moveTo(i*cs,0);ctx.lineTo(i*cs,ch);ctx.stroke();}
     for(let i=0;i<=H;i++){ctx.beginPath();ctx.moveTo(0,i*cs);ctx.lineTo(cw,i*cs);ctx.stroke();}
   }
 }
 
-function drawTile(ctx, t, px, py, cx, cy, cs, fs, showSecrets){
+// ── Door orientation helper ──
+function doorOri(grid, gx, gy){
+  if(!grid) return 'h';
+  const H=grid.length, W=grid[0].length;
+  const L = gx>0   ? grid[gy][gx-1] : T.WALL;
+  const R = gx<W-1 ? grid[gy][gx+1] : T.WALL;
+  return (L!==T.WALL && R!==T.WALL) ? 'h' : 'v';
+}
+
+function drawTile(ctx, t, px, py, cx, cy, cs, fs, showSecrets, grid, gx, gy){
   switch(t){
-    case T.DOOR:
-      // Door frame + panel
-      ctx.fillStyle='rgba(100,55,15,.95)';
-      ctx.fillRect(px+cs*.12,py+cs*.08,cs*.76,cs*.84);
-      ctx.fillStyle='rgba(160,90,28,.9)';
-      ctx.fillRect(px+cs*.22,py+cs*.14,cs*.56,cs*.72);
-      // handle
-      ctx.fillStyle='rgba(230,180,70,.85)';
-      ctx.beginPath(); ctx.arc(px+cs*.65,cy,cs*.07,0,Math.PI*2); ctx.fill();
-      // frame highlight
-      ctx.strokeStyle='rgba(200,130,40,.6)'; ctx.lineWidth=.8;
-      ctx.strokeRect(px+cs*.12,py+cs*.08,cs*.76,cs*.84);
-      break;
 
-    case T.DOOR_LOCKED:
-      ctx.fillStyle='rgba(80,18,18,.95)';
-      ctx.fillRect(px+cs*.12,py+cs*.08,cs*.76,cs*.84);
-      ctx.fillStyle='rgba(130,30,30,.9)';
-      ctx.fillRect(px+cs*.22,py+cs*.14,cs*.56,cs*.72);
-      ctx.strokeStyle='rgba(180,50,50,.6)'; ctx.lineWidth=.8;
-      ctx.strokeRect(px+cs*.12,py+cs*.08,cs*.76,cs*.84);
-      if(cs>=10){
-        // Lock icon
-        ctx.fillStyle='rgba(220,140,140,.9)';
-        ctx.beginPath(); ctx.arc(cx,cy-cs*.08,cs*.12,0,Math.PI*2); ctx.stroke();
-        ctx.fillRect(cx-cs*.1,cy,cs*.2,cs*.18);
+    // ── Normal door — classic cartographic symbol ──
+    // Two short wall stubs + a filled rectangle bridging the gap
+    case T.DOOR: {
+      const ori = doorOri(grid,gx,gy);
+      const bw  = Math.max(2, cs*.55);   // bridge width  (along corridor)
+      const bh  = Math.max(2, cs*.18);   // bridge height (across corridor)
+      const sw  = Math.max(1, cs*.14);   // stub width
+      // Floor under
+      ctx.fillStyle = PALETTE.floor;
+      ctx.fillRect(px,py,cs,cs);
+      if(ori==='h'){
+        // wall stubs top and bottom, bridge across middle
+        ctx.fillStyle = PALETTE.outline;
+        ctx.fillRect(cx-bw/2, py,       bw, sw);        // top stub
+        ctx.fillRect(cx-bw/2, py+cs-sw, bw, sw);        // bottom stub
+        // bridge rect
+        ctx.fillStyle = '#7a3a08';
+        ctx.fillRect(cx-bw/2, py+sw, bw, cs-sw*2);
+        // highlight on bridge
+        ctx.fillStyle = '#a05010';
+        ctx.fillRect(cx-bw/2+1, py+sw+1, bw-2, cs-sw*2-2);
+        // outline bridge
+        ctx.strokeStyle = PALETTE.outline; ctx.lineWidth = Math.max(.8, cs*.06);
+        ctx.strokeRect(cx-bw/2, py+sw, bw, cs-sw*2);
+      } else {
+        ctx.fillStyle = PALETTE.outline;
+        ctx.fillRect(px,       cy-bw/2, sw, bw);
+        ctx.fillRect(px+cs-sw, cy-bw/2, sw, bw);
+        ctx.fillStyle = '#7a3a08';
+        ctx.fillRect(px+sw, cy-bw/2, cs-sw*2, bw);
+        ctx.fillStyle = '#a05010';
+        ctx.fillRect(px+sw+1, cy-bw/2+1, cs-sw*2-2, bw-2);
+        ctx.strokeStyle = PALETTE.outline; ctx.lineWidth = Math.max(.8, cs*.06);
+        ctx.strokeRect(px+sw, cy-bw/2, cs-sw*2, bw);
       }
       break;
+    }
 
-    case T.DOOR_SECRET:
+    // ── Locked door — same symbol but iron-grey + portcullis lines ──
+    case T.DOOR_LOCKED: {
+      const ori = doorOri(grid,gx,gy);
+      const bw = Math.max(2, cs*.55);
+      const bh = Math.max(2, cs*.18);
+      const sw = Math.max(1, cs*.14);
+      ctx.fillStyle = PALETTE.floor; ctx.fillRect(px,py,cs,cs);
+      if(ori==='h'){
+        ctx.fillStyle = PALETTE.outline;
+        ctx.fillRect(cx-bw/2,py,bw,sw); ctx.fillRect(cx-bw/2,py+cs-sw,bw,sw);
+        ctx.fillStyle='#2a2020';
+        ctx.fillRect(cx-bw/2,py+sw,bw,cs-sw*2);
+        // portcullis bars
+        if(cs>=10){
+          ctx.strokeStyle='rgba(140,110,80,.7)'; ctx.lineWidth=Math.max(1,cs*.06);
+          const bars=Math.max(2,Math.floor(bw/(cs*.14)));
+          for(let i=1;i<bars;i++){
+            const bx=cx-bw/2+(bw/bars)*i;
+            ctx.beginPath();ctx.moveTo(bx,py+sw);ctx.lineTo(bx,py+cs-sw);ctx.stroke();
+          }
+        }
+        ctx.strokeStyle=PALETTE.outline; ctx.lineWidth=Math.max(.8,cs*.06);
+        ctx.strokeRect(cx-bw/2,py+sw,bw,cs-sw*2);
+      } else {
+        ctx.fillStyle=PALETTE.outline;
+        ctx.fillRect(px,cy-bw/2,sw,bw); ctx.fillRect(px+cs-sw,cy-bw/2,sw,bw);
+        ctx.fillStyle='#2a2020';
+        ctx.fillRect(px+sw,cy-bw/2,cs-sw*2,bw);
+        if(cs>=10){
+          ctx.strokeStyle='rgba(140,110,80,.7)'; ctx.lineWidth=Math.max(1,cs*.06);
+          const bars=Math.max(2,Math.floor(bw/(cs*.14)));
+          for(let i=1;i<bars;i++){
+            const by=cy-bw/2+(bw/bars)*i;
+            ctx.beginPath();ctx.moveTo(px+sw,by);ctx.lineTo(px+cs-sw,by);ctx.stroke();
+          }
+        }
+        ctx.strokeStyle=PALETTE.outline; ctx.lineWidth=Math.max(.8,cs*.06);
+        ctx.strokeRect(px+sw,cy-bw/2,cs-sw*2,bw);
+      }
+      break;
+    }
+
+    // ── Secret door — looks like wall, tiny marks in MJ mode ──
+    case T.DOOR_SECRET: {
+      // Draw as wall (hatch)
+      ctx.fillStyle = PALETTE.wall; ctx.fillRect(px,py,cs,cs);
+      ctx.fillStyle = getHatchPattern(ctx); ctx.fillRect(px,py,cs,cs);
+      // Wall outlines so it blends perfectly
+      ctx.strokeStyle=PALETTE.outline; ctx.lineWidth=Math.max(1.5,cs*.12);
+      // MJ hint: small dotted arc on the wall face
       if(showSecrets){
-        // Dashed outline — visible only in MJ mode
-        ctx.setLineDash([2,2]);
-        ctx.strokeStyle='rgba(150,70,210,.65)'; ctx.lineWidth=1.2;
-        ctx.strokeRect(px+2,py+2,cs-4,cs-4);
+        const ori=doorOri(grid,gx,gy);
+        ctx.strokeStyle='rgba(140,60,200,.75)';
+        ctx.lineWidth=Math.max(1,cs*.07);
+        ctx.setLineDash([Math.max(1,cs*.1),Math.max(1,cs*.08)]);
+        if(ori==='h'){
+          ctx.beginPath();ctx.moveTo(cx,py+cs*.15);ctx.lineTo(cx,py+cs*.85);ctx.stroke();
+        } else {
+          ctx.beginPath();ctx.moveTo(px+cs*.15,cy);ctx.lineTo(px+cs*.85,cy);ctx.stroke();
+        }
         ctx.setLineDash([]);
-        if(cs>=11){ctx.font=`${fs*.75}px serif`;ctx.fillStyle='rgba(170,90,230,.75)';ctx.fillText('?',cx,cy);}
+        if(cs>=12){
+          ctx.font=`bold ${Math.max(6,cs*.3)}px Cinzel,serif`;
+          ctx.fillStyle='rgba(150,60,220,.8)';
+          ctx.textAlign='center'; ctx.textBaseline='middle';
+          ctx.fillText('S',cx,cy);
+        }
       }
       break;
+    }
 
+    // ── Pillar — solid circle with outline ──
+    case T.PILLAR: {
+      const r = Math.max(2, cs*.36);
+      ctx.fillStyle = PALETTE.outline;
+      ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle = '#888070';
+      ctx.beginPath(); ctx.arc(cx,cy,r*.68,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle = '#a89880';
+      ctx.beginPath(); ctx.arc(cx-r*.22,cy-r*.22,r*.28,0,Math.PI*2); ctx.fill();
+      break;
+    }
+
+    // ── Stairs — parallel horizontal lines (classic view from above) ──
     case T.STAIRS_DOWN:
-      ctx.font=`${fs}px serif`; ctx.fillStyle='rgba(75,115,235,.92)'; ctx.fillText('▼',cx,cy); break;
-    case T.STAIRS_UP:
-      ctx.font=`${fs}px serif`; ctx.fillStyle='rgba(75,195,115,.92)'; ctx.fillText('▲',cx,cy); break;
-    case T.CHEST:
-      ctx.font=`${fs}px serif`; ctx.fillStyle='rgba(205,165,28,.92)'; ctx.fillText('◈',cx,cy); break;
-    case T.ALTAR:
-      ctx.font=`${fs}px serif`; ctx.fillStyle='rgba(165,85,205,.92)'; ctx.fillText('✦',cx,cy); break;
-    case T.TRAP:
-      ctx.font=`${fs}px serif`; ctx.fillStyle='rgba(195,65,38,.88)'; ctx.fillText('✕',cx,cy); break;
-    case T.PILLAR:
-      ctx.fillStyle='rgba(85,75,105,.75)'; ctx.beginPath(); ctx.arc(cx,cy,cs*.38,0,Math.PI*2); ctx.fill();
-      ctx.strokeStyle='rgba(135,125,165,.55)'; ctx.lineWidth=1; ctx.stroke();
+    case T.STAIRS_UP: {
+      const lines = Math.max(3, Math.floor(cs/4));
+      const margin = cs*.15;
+      const up = (t===T.STAIRS_UP);
+      ctx.strokeStyle = PALETTE.outline;
+      ctx.lineWidth   = Math.max(.8, cs*.06);
+      for(let i=0;i<lines;i++){
+        const frac = margin + (cs-margin*2)*(i/(lines-1));
+        ctx.beginPath();
+        ctx.moveTo(px+margin, py+frac);
+        ctx.lineTo(px+cs-margin, py+frac);
+        ctx.stroke();
+      }
+      // Arrow indicator
+      ctx.fillStyle = up ? '#207040' : '#204080';
+      ctx.font=`bold ${Math.max(6,cs*.4)}px serif`;
+      ctx.textAlign='center'; ctx.textBaseline='middle';
+      ctx.fillText(up?'↑':'↓', cx, cy);
       break;
-    case T.WATER:
-      ctx.fillStyle='rgba(18,88,155,.45)'; ctx.fillRect(px,py,cs,cs);
-      if(cs>=12){ctx.font=`${cs*.5}px serif`;ctx.fillStyle='rgba(55,145,205,.45)';ctx.fillText('≈',cx,cy);}
+    }
+
+    // ── Chest ──
+    case T.CHEST: {
+      const w=cs*.52, h=cs*.36;
+      ctx.fillStyle='#6a4010';
+      ctx.fillRect(cx-w/2, cy-h/2, w, h);
+      ctx.fillStyle='#9a6018';
+      ctx.fillRect(cx-w/2+1, cy-h/2+1, w-2, h/2-1);
+      ctx.fillStyle='#d4a020';
+      ctx.fillRect(cx-cs*.06, cy-cs*.06, cs*.12, cs*.12);
+      ctx.strokeStyle=PALETTE.outline; ctx.lineWidth=Math.max(.8,cs*.06);
+      ctx.strokeRect(cx-w/2,cy-h/2,w,h);
       break;
-    case T.LAVA:
-      ctx.fillStyle='rgba(160,40,10,.55)'; ctx.fillRect(px,py,cs,cs);
-      if(cs>=12){ctx.font=`${cs*.5}px serif`;ctx.fillStyle='rgba(230,100,30,.6)';ctx.fillText('~',cx,cy);}
+    }
+
+    // ── Altar ──
+    case T.ALTAR: {
+      const w=cs*.6, h=cs*.4, pedH=cs*.14;
+      ctx.fillStyle='#888070';
+      ctx.fillRect(cx-w/2,cy+h/2-pedH,w,pedH);
+      ctx.fillStyle='#a89880';
+      ctx.fillRect(cx-w*0.38,cy-h/2,w*.76,h-pedH);
+      ctx.strokeStyle=PALETTE.outline; ctx.lineWidth=Math.max(.8,cs*.06);
+      ctx.strokeRect(cx-w*0.38,cy-h/2,w*.76,h-pedH);
+      // Cross symbol
+      ctx.lineWidth=Math.max(1,cs*.08);
+      ctx.beginPath(); ctx.moveTo(cx,cy-h*.3); ctx.lineTo(cx,cy+h*.1); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(cx-w*.15,cy-h*.08); ctx.lineTo(cx+w*.15,cy-h*.08); ctx.stroke();
       break;
+    }
+
+    // ── Trap ──
+    case T.TRAP: {
+      const r=Math.max(2,cs*.32);
+      ctx.strokeStyle='rgba(180,40,20,.7)'; ctx.lineWidth=Math.max(1,cs*.08);
+      // X mark
+      ctx.beginPath(); ctx.moveTo(cx-r,cy-r); ctx.lineTo(cx+r,cy+r); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(cx+r,cy-r); ctx.lineTo(cx-r,cy+r); ctx.stroke();
+      // Circle
+      ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2); ctx.stroke();
+      break;
+    }
   }
 }
 
@@ -528,15 +761,19 @@ function renderMinimap(ctx, dungeon, vpX, vpY, vpW, vpH, size){
   const {grid:g, rooms, W, H} = dungeon;
   const sx=size/W, sy=size/H;
   ctx.clearRect(0,0,size,size);
-  ctx.fillStyle=PALETTE.bg; ctx.fillRect(0,0,size,size);
+  // Hatched bg
+  ctx.fillStyle=PALETTE.wall; ctx.fillRect(0,0,size,size);
+  // Floor tiles
   for(let y=0;y<H;y++) for(let x=0;x<W;x++){
     const t=g[y][x]; if(t===T.WALL) continue;
-    ctx.fillStyle = t===T.CORRIDOR?PALETTE.corr:PALETTE.floor;
+    ctx.fillStyle = t===T.WATER?PALETTE.water:t===T.LAVA?PALETTE.lava:t===T.CORRIDOR?PALETTE.corr:PALETTE.floor;
     ctx.fillRect(x*sx,y*sy,Math.max(1,sx),Math.max(1,sy));
   }
-  const RC={entry:'#d4a040',boss:'#c04040',special:'#3a6a3a',secret:'#503a8a',trap:'#7a3030',normal:'rgba(65,58,115,.65)'};
-  for(const r of rooms){ ctx.fillStyle=RC[r.type]||RC.normal; ctx.fillRect(r.x*sx,r.y*sy,r.w*sx,r.h*sy); }
-  ctx.strokeStyle='rgba(240,195,60,.65)'; ctx.lineWidth=1;
+  // Room tints
+  const MM={entry:'rgba(200,160,20,.4)',boss:'rgba(180,20,20,.4)',special:'rgba(20,120,20,.3)',secret:'rgba(100,20,180,.35)',trap:'rgba(180,60,10,.35)',normal:null};
+  for(const r of rooms){ if(MM[r.type]){ctx.fillStyle=MM[r.type];ctx.fillRect(r.x*sx,r.y*sy,r.w*sx,r.h*sy);} }
+  // Viewport rect
+  ctx.strokeStyle='rgba(0,0,200,.55)'; ctx.lineWidth=1;
   ctx.strokeRect(Math.max(0,vpX*sx),Math.max(0,vpY*sy),Math.min(size,vpW*sx),Math.min(size,vpH*sy));
 }
 
@@ -626,6 +863,7 @@ function updLabel(id, val, suffix){ document.getElementById(id).textContent = va
 // GENERATE
 // ══════════════════════════════════════════════════════════
 function generate(){
+  _hatchPattern = null; // reset pattern cache for new canvas context
   const cfg = getConfig();
   dungeon = generateDungeon(cfg);
   saveDungeon(dungeon);

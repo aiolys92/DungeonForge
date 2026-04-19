@@ -27,7 +27,7 @@ body{background:var(--bg);color:var(--text);font-family:'Crimson Pro',Georgia,se
 .app{display:grid;grid-template-columns:256px 1fr 272px;height:calc(100vh - 48px);margin-top:48px}
 .sidebar{background:var(--bg2);border-right:1px solid var(--border);overflow-y:auto;padding:1rem .9rem}
 .sidebar-right{background:var(--bg2);border-left:1px solid var(--border);overflow-y:auto;padding:1rem .9rem}
-.map-area{position:relative;background:#04030a;overflow:hidden;cursor:grab}
+.map-area{position:relative;background:#c8c0a8;overflow:hidden;cursor:grab}
 .map-area:active{cursor:grabbing}
 #mc{position:absolute;top:0;left:0;image-rendering:pixelated;transform-origin:0 0}
 
